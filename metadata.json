@@ -1,0 +1,6 @@
+{
+  "name": "Agile Velocity",
+  "description": "Gestor de proyectos con metodología Scrum, tablero Kanban interactivo y asistente IA para historias de usuario.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
