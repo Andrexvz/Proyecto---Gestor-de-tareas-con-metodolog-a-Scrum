@@ -48,8 +48,9 @@ export interface DatabaseSchema {
   resetTokens: PasswordResetToken[];
 }
 
-const DATA_DIR = path.resolve(process.cwd(), 'data');
+const DATA_DIR = path.resolve(import.meta.dirname ?? process.cwd(), '..', 'data');
 const DB_PATH = path.join(DATA_DIR, 'scrum-db.json');
+const DB_BACKUP_PATH = path.join(DATA_DIR, 'scrum-db.backup.json');
 
 function createSeedDatabase(): DatabaseSchema {
   const defaultHash = bcrypt.hashSync('Password123!', 10);
@@ -532,8 +533,18 @@ class ScrumStore {
         const raw = fs.readFileSync(DB_PATH, 'utf-8');
         this.db = JSON.parse(raw) as DatabaseSchema;
       } catch {
-        this.db = createSeedDatabase();
-        this.save();
+        if (fs.existsSync(DB_BACKUP_PATH)) {
+          try {
+            const backupRaw = fs.readFileSync(DB_BACKUP_PATH, 'utf-8');
+            this.db = JSON.parse(backupRaw) as DatabaseSchema;
+          } catch {
+            this.db = createSeedDatabase();
+            this.save();
+          }
+        } else {
+          this.db = createSeedDatabase();
+          this.save();
+        }
       }
     } else {
       this.db = createSeedDatabase();
@@ -542,7 +553,15 @@ class ScrumStore {
   }
 
   private save() {
-    fs.writeFileSync(DB_PATH, JSON.stringify(this.db, null, 2), 'utf-8');
+    const data = JSON.stringify(this.db, null, 2);
+    try {
+      if (fs.existsSync(DB_PATH)) {
+        fs.copyFileSync(DB_PATH, DB_BACKUP_PATH);
+      }
+    } catch {
+      // Ignorar fallo al respaldar
+    }
+    fs.writeFileSync(DB_PATH, data, 'utf-8');
   }
 
   public sanitizeUser(u: StoredUser): User {
@@ -925,6 +944,10 @@ class ScrumStore {
     return this.db.tasks.filter((t) => storyIds.has(t.userStoryId));
   }
 
+  public getTaskById(taskId: number): TaskItem | undefined {
+    return this.db.tasks.find((t) => t.id === taskId);
+  }
+
   private recomputeStoryCompletion(storyId: number) {
     const story = this.getStoryById(storyId);
     if (!story) return;
@@ -939,10 +962,34 @@ class ScrumStore {
     const story = this.getStoryById(storyId);
     if (!story) throw Object.assign(new Error('Historia de usuario no encontrada'), { status: 404 });
 
-    if (input.assignedToId) {
+    if (story.sprintId !== null) {
+      const sprint = this.getSprintById(story.sprintId);
+      if (sprint && sprint.status === 'CLOSED') {
+        throw Object.assign(new Error('No se pueden agregar tareas a una historia de un Sprint cerrado'), {
+          status: 409,
+        });
+      }
+    }
+
+    const cleanDesc = (input.description || '').trim();
+    if (!cleanDesc || cleanDesc.length < 3) {
+      throw Object.assign(new Error('La descripción técnica debe tener al menos 3 caracteres'), {
+        status: 400,
+      });
+    }
+    if (cleanDesc.length > 500) {
+      throw Object.assign(new Error('La descripción técnica no puede exceder 500 caracteres'), {
+        status: 400,
+      });
+    }
+
+    if (input.assignedToId !== undefined && input.assignedToId !== null) {
       const user = this.findUserById(input.assignedToId);
+      if (!user) {
+        throw Object.assign(new Error('Usuario asignado no encontrado'), { status: 404 });
+      }
       const isMember =
-        user?.globalRole === 'ADMIN' || this.getMembership(input.assignedToId, story.projectId);
+        user.globalRole === 'ADMIN' || this.getMembership(input.assignedToId, story.projectId);
       if (!isMember) {
         throw Object.assign(new Error('El usuario asignado no pertenece a este proyecto'), {
           status: 400,
@@ -956,7 +1003,7 @@ class ScrumStore {
       userStoryId: storyId,
       assignedToId: input.assignedToId ?? null,
       code: `TASK-${String(id).padStart(2, '0')}`,
-      description: input.description.trim(),
+      description: cleanDesc,
       status: 'TODO',
       createdAt: new Date().toISOString(),
     };
@@ -984,19 +1031,50 @@ class ScrumStore {
     const story = this.getStoryById(task.userStoryId);
     if (!story) throw Object.assign(new Error('Historia asociada no encontrada'), { status: 404 });
 
+    if (story.sprintId !== null) {
+      const sprint = this.getSprintById(story.sprintId);
+      if (sprint && sprint.status === 'CLOSED') {
+        throw Object.assign(new Error('No se pueden modificar tareas de un Sprint cerrado'), {
+          status: 409,
+        });
+      }
+    }
+
     const prevAssignee = task.assignedToId;
 
     if (patch.status !== undefined) {
+      if (!['TODO', 'IN_PROGRESS', 'TESTING', 'DONE'].includes(patch.status)) {
+        throw Object.assign(
+          new Error('Estado de tarea inválido. Debe ser: TODO, IN_PROGRESS, TESTING o DONE'),
+          { status: 400 }
+        );
+      }
       task.status = patch.status;
     }
+
     if (patch.description !== undefined) {
-      task.description = patch.description.trim();
+      const cleanDesc = patch.description.trim();
+      if (!cleanDesc || cleanDesc.length < 3) {
+        throw Object.assign(new Error('La descripción técnica debe tener al menos 3 caracteres'), {
+          status: 400,
+        });
+      }
+      if (cleanDesc.length > 500) {
+        throw Object.assign(new Error('La descripción técnica no puede exceder 500 caracteres'), {
+          status: 400,
+        });
+      }
+      task.description = cleanDesc;
     }
+
     if (patch.assignedToId !== undefined) {
       if (patch.assignedToId !== null) {
         const user = this.findUserById(patch.assignedToId);
+        if (!user) {
+          throw Object.assign(new Error('Usuario asignado no encontrado'), { status: 404 });
+        }
         const isMember =
-          user?.globalRole === 'ADMIN' || this.getMembership(patch.assignedToId, story.projectId);
+          user.globalRole === 'ADMIN' || this.getMembership(patch.assignedToId, story.projectId);
         if (!isMember) {
           throw Object.assign(new Error('El usuario asignado no tiene membresía en el proyecto'), {
             status: 400,
@@ -1028,6 +1106,16 @@ class ScrumStore {
   public deleteTask(taskId: number) {
     const idx = this.db.tasks.findIndex((t) => t.id === taskId);
     if (idx === -1) throw Object.assign(new Error('Tarea no encontrada'), { status: 404 });
+    const task = this.db.tasks[idx];
+    const story = this.getStoryById(task.userStoryId);
+    if (story && story.sprintId !== null) {
+      const sprint = this.getSprintById(story.sprintId);
+      if (sprint && sprint.status === 'CLOSED') {
+        throw Object.assign(new Error('No se pueden eliminar tareas de un Sprint cerrado'), {
+          status: 409,
+        });
+      }
+    }
     const [removed] = this.db.tasks.splice(idx, 1);
     this.recomputeStoryCompletion(removed.userStoryId);
     this.save();

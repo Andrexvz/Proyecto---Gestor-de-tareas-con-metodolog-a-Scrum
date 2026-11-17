@@ -460,6 +460,10 @@ async function startServer() {
   // --- TASKS (RF-09, RF-10, RF-11) ---
   app.post('/api/v1/stories/:storyId/tasks', authenticateToken, (req: AuthRequest, res) => {
     const storyId = Number(req.params.storyId);
+    if (!storyId || Number.isNaN(storyId)) {
+      res.status(400).json({ error: 'ID de historia de usuario inválido' });
+      return;
+    }
     const story = store.getStoryById(storyId);
     if (!story) {
       res.status(404).json({ error: 'Historia de usuario no encontrada' });
@@ -471,14 +475,26 @@ async function startServer() {
       return;
     }
     const { description, assignedToId } = req.body ?? {};
-    if (!description || !String(description).trim()) {
-      res.status(400).json({ error: 'La descripción técnica es obligatoria' });
+    if (!description || typeof description !== 'string' || description.trim().length < 3) {
+      res.status(400).json({ error: 'La descripción técnica debe tener al menos 3 caracteres' });
+      return;
+    }
+    if (description.trim().length > 500) {
+      res.status(400).json({ error: 'La descripción técnica no puede exceder 500 caracteres' });
+      return;
+    }
+    const parsedAssigneeId =
+      assignedToId === null || assignedToId === undefined || assignedToId === ''
+        ? null
+        : Number(assignedToId);
+    if (parsedAssigneeId !== null && Number.isNaN(parsedAssigneeId)) {
+      res.status(400).json({ error: 'Identificador de responsable asignado inválido' });
       return;
     }
     try {
       const result = store.createTask(storyId, {
-        description: String(description),
-        assignedToId: assignedToId ? Number(assignedToId) : null,
+        description: description.trim(),
+        assignedToId: parsedAssigneeId,
       });
       res.status(201).json(result);
     } catch (err: any) {
@@ -488,18 +504,55 @@ async function startServer() {
 
   app.patch('/api/v1/tasks/:taskId', authenticateToken, (req: AuthRequest, res) => {
     const taskId = Number(req.params.taskId);
-    const { status, assignedToId, description } = req.body ?? {};
-    if (status !== undefined && !['TODO', 'IN_PROGRESS', 'TESTING', 'DONE'].includes(status)) {
-      res.status(400).json({ error: 'Estado de tarea inválido' });
+    if (!taskId || Number.isNaN(taskId)) {
+      res.status(400).json({ error: 'ID de tarea inválido' });
       return;
     }
+    const existingTask = store.getTaskById(taskId);
+    if (!existingTask) {
+      res.status(404).json({ error: 'Tarea no encontrada' });
+      return;
+    }
+    const story = store.getStoryById(existingTask.userStoryId);
+    if (!story) {
+      res.status(404).json({ error: 'Historia asociada no encontrada' });
+      return;
+    }
+    const role = getEffectiveRole(req.user!, story.projectId);
+    if (!role) {
+      res.status(403).json({ error: 'No tienes acceso a este proyecto' });
+      return;
+    }
+
+    const { status, assignedToId, description } = req.body ?? {};
+    if (status !== undefined && !['TODO', 'IN_PROGRESS', 'TESTING', 'DONE'].includes(status)) {
+      res.status(400).json({ error: 'Estado de tarea inválido. Debe ser: TODO, IN_PROGRESS, TESTING o DONE' });
+      return;
+    }
+    if (description !== undefined) {
+      if (typeof description !== 'string' || description.trim().length < 3) {
+        res.status(400).json({ error: 'La descripción técnica debe tener al menos 3 caracteres' });
+        return;
+      }
+      if (description.trim().length > 500) {
+        res.status(400).json({ error: 'La descripción técnica no puede exceder 500 caracteres' });
+        return;
+      }
+    }
+    const parsedAssigneeId =
+      assignedToId === null || assignedToId === undefined || assignedToId === ''
+        ? (assignedToId === null ? null : undefined)
+        : Number(assignedToId);
+    if (parsedAssigneeId !== undefined && parsedAssigneeId !== null && Number.isNaN(parsedAssigneeId)) {
+      res.status(400).json({ error: 'Identificador de responsable asignado inválido' });
+      return;
+    }
+
     try {
       const result = store.updateTask(taskId, {
         ...(status !== undefined ? { status: status as TaskStatus } : {}),
-        ...(assignedToId !== undefined
-          ? { assignedToId: assignedToId === null ? null : Number(assignedToId) }
-          : {}),
-        ...(description !== undefined ? { description: String(description) } : {}),
+        ...(parsedAssigneeId !== undefined ? { assignedToId: parsedAssigneeId } : {}),
+        ...(description !== undefined ? { description: description.trim() } : {}),
       });
       res.json(result);
     } catch (err: any) {
@@ -508,8 +561,29 @@ async function startServer() {
   });
 
   app.delete('/api/v1/tasks/:taskId', authenticateToken, (req: AuthRequest, res) => {
+    const taskId = Number(req.params.taskId);
+    if (!taskId || Number.isNaN(taskId)) {
+      res.status(400).json({ error: 'ID de tarea inválido' });
+      return;
+    }
+    const existingTask = store.getTaskById(taskId);
+    if (!existingTask) {
+      res.status(404).json({ error: 'Tarea no encontrada' });
+      return;
+    }
+    const story = store.getStoryById(existingTask.userStoryId);
+    if (!story) {
+      res.status(404).json({ error: 'Historia asociada no encontrada' });
+      return;
+    }
+    const role = getEffectiveRole(req.user!, story.projectId);
+    if (!role) {
+      res.status(403).json({ error: 'No tienes acceso a este proyecto' });
+      return;
+    }
+
     try {
-      store.deleteTask(Number(req.params.taskId));
+      store.deleteTask(taskId);
       res.json({ ok: true });
     } catch (err: any) {
       res.status(err.status || 400).json({ error: err.message });

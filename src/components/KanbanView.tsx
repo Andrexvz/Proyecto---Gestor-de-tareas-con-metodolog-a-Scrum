@@ -20,6 +20,7 @@ import {
   X,
   GripVertical,
   Trash2,
+  Pencil,
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
@@ -61,6 +62,7 @@ function DraggableTaskCard({
   currentUserId,
   onChangeAssignee,
   onChangeStatus,
+  onEditTask,
   onDeleteTask,
   isOverlay = false,
 }: {
@@ -71,6 +73,7 @@ function DraggableTaskCard({
   currentUserId: number;
   onChangeAssignee: (taskId: number, userId: number | null) => void;
   onChangeStatus: (taskId: number, status: TaskStatus) => void;
+  onEditTask?: (task: TaskItem) => void;
   onDeleteTask: (taskId: number) => void;
   isOverlay?: boolean;
 }) {
@@ -121,14 +124,26 @@ function DraggableTaskCard({
         <div className="flex items-center gap-1.5 shrink-0">
           {story && <PrioritySignal priority={story.priority} />}
           {!isOverlay && (
-            <button
-              type="button"
-              onClick={() => onDeleteTask(task.id)}
-              className="p-1 rounded text-[#64748B] hover:text-[#F43F5E] transition-colors"
-              title="Eliminar tarea"
-            >
-              <Trash2 className="w-3 h-3" />
-            </button>
+            <>
+              {onEditTask && (
+                <button
+                  type="button"
+                  onClick={() => onEditTask(task)}
+                  className="p-1 rounded text-[#64748B] hover:text-[#3B82F6] transition-colors"
+                  title="Editar tarea"
+                >
+                  <Pencil className="w-3 h-3" />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => onDeleteTask(task.id)}
+                className="p-1 rounded text-[#64748B] hover:text-[#F43F5E] transition-colors"
+                title="Eliminar tarea"
+              >
+                <Trash2 className="w-3 h-3" />
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -244,6 +259,14 @@ export function KanbanView({
   const [taskError, setTaskError] = useState('');
   const [savingTask, setSavingTask] = useState(false);
 
+  // Edit Task Modal
+  const [editingTask, setEditingTask] = useState<TaskItem | null>(null);
+  const [editTaskDesc, setEditTaskDesc] = useState('');
+  const [editTaskAssigneeId, setEditTaskAssigneeId] = useState<string>('');
+  const [editTaskStatus, setEditTaskStatus] = useState<TaskStatus>('TODO');
+  const [editTaskError, setEditTaskError] = useState('');
+  const [savingEditTask, setSavingEditTask] = useState(false);
+
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
     useSensor(KeyboardSensor)
@@ -320,12 +343,12 @@ export function KanbanView({
       });
       await onRefresh();
       setOptimisticTasks(null);
-      showToast('Estado actualizado correctamente', 'success');
-    } catch {
+      showToast(`Tarea ${current.code} movida a ${TaskColumnLabel(newStatus)}`, 'success');
+    } catch (err: any) {
       // Automatic visual rollback on network/500 failure
       setOptimisticTasks(snapshot);
       setTimeout(() => setOptimisticTasks(null), 50);
-      showToast('No se pudo actualizar la tarea. Verifica tu conexión e inténtalo nuevamente', 'error');
+      showToast(err?.message || 'No se pudo actualizar la tarea. Verifica tu conexión e inténtalo nuevamente', 'error');
     }
   };
 
@@ -346,33 +369,84 @@ export function KanbanView({
   };
 
   const handleChangeAssignee = async (taskId: number, assignedToId: number | null) => {
+    const task = effectiveTasks.find((t) => t.id === taskId);
     try {
       await apiFetch(`/api/v1/tasks/${taskId}`, {
         method: 'PATCH',
         body: JSON.stringify({ assignedToId }),
       });
       await onRefresh();
-      showToast('Responsable actualizado', 'success');
+      const assigneeName = assignedToId
+        ? userMap.get(assignedToId)?.fullName || 'usuario'
+        : 'Sin asignar';
+      showToast(`Responsable de ${task?.code ?? 'tarea'} actualizado a: ${assigneeName}`, 'success');
     } catch (err: any) {
-      showToast(err?.message || 'Error al asignar tarea', 'error');
+      showToast(err?.message || 'Error al asignar responsable a la tarea', 'error');
     }
   };
 
   const handleDeleteTask = async (taskId: number) => {
+    const task = effectiveTasks.find((t) => t.id === taskId);
     try {
       await apiFetch(`/api/v1/tasks/${taskId}`, { method: 'DELETE' });
       await onRefresh();
-      showToast('Tarea eliminada', 'info');
+      showToast(`Tarea ${task?.code ?? ''} eliminada correctamente`, 'info');
     } catch (err: any) {
-      showToast(err?.message || 'Error al eliminar tarea', 'error');
+      showToast(err?.message || 'Error al eliminar la tarea', 'error');
+    }
+  };
+
+  const handleOpenEditTask = (task: TaskItem) => {
+    setEditingTask(task);
+    setEditTaskDesc(task.description);
+    setEditTaskAssigneeId(task.assignedToId ? String(task.assignedToId) : '');
+    setEditTaskStatus(task.status);
+    setEditTaskError('');
+  };
+
+  const handleSaveEditTask = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingTask) return;
+    const trimmed = editTaskDesc.trim();
+    if (!trimmed || trimmed.length < 3) {
+      setEditTaskError('La descripción técnica debe tener al menos 3 caracteres');
+      return;
+    }
+    if (trimmed.length > 500) {
+      setEditTaskError('La descripción técnica no puede exceder 500 caracteres');
+      return;
+    }
+    setSavingEditTask(true);
+    try {
+      await apiFetch(`/api/v1/tasks/${editingTask.id}`, {
+        method: 'PATCH',
+        body: JSON.stringify({
+          description: trimmed,
+          assignedToId: editTaskAssigneeId ? Number(editTaskAssigneeId) : null,
+          status: editTaskStatus,
+        }),
+      });
+      showToast(`Tarea ${editingTask.code} actualizada correctamente`, 'success');
+      setEditingTask(null);
+      await onRefresh();
+    } catch (err: any) {
+      setEditTaskError(err?.message || 'Error al actualizar la tarea');
+      showToast(err?.message || 'Error al actualizar la tarea', 'error');
+    } finally {
+      setSavingEditTask(false);
     }
   };
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!addTaskStory) return;
-    if (!taskDesc.trim()) {
-      setTaskError('La descripción técnica es obligatoria');
+    const trimmed = taskDesc.trim();
+    if (!trimmed || trimmed.length < 3) {
+      setTaskError('La descripción técnica debe tener al menos 3 caracteres');
+      return;
+    }
+    if (trimmed.length > 500) {
+      setTaskError('La descripción técnica no puede exceder 500 caracteres');
       return;
     }
     setSavingTask(true);
@@ -380,16 +454,17 @@ export function KanbanView({
       await apiFetch(`/api/v1/stories/${addTaskStory.id}/tasks`, {
         method: 'POST',
         body: JSON.stringify({
-          description: taskDesc.trim(),
+          description: trimmed,
           assignedToId: taskAssigneeId ? Number(taskAssigneeId) : null,
         }),
       });
-      showToast('Tarea agregada en To Do', 'success');
+      showToast('Tarea agregada exitosamente en To Do', 'success');
       setAddTaskStory(null);
       setTaskDesc('');
       setTaskError('');
       await onRefresh();
     } catch (err: any) {
+      setTaskError(err?.message || 'Error al crear la tarea');
       showToast(err?.message || 'Error al crear tarea', 'error');
     } finally {
       setSavingTask(false);
@@ -629,6 +704,7 @@ export function KanbanView({
                             currentUserId={user?.id ?? 0}
                             onChangeAssignee={handleChangeAssignee}
                             onChangeStatus={persistTaskStatus}
+                            onEditTask={handleOpenEditTask}
                             onDeleteTask={handleDeleteTask}
                           />
                         ))
@@ -735,6 +811,107 @@ export function KanbanView({
                 className="px-4 py-2 text-[13px] font-medium bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg disabled:opacity-60"
               >
                 {savingTask ? 'Creando...' : 'Crear en To Do'}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {/* Edit Task Modal */}
+      {editingTask && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px] p-4">
+          <form
+            onSubmit={handleSaveEditTask}
+            className="w-full max-w-md rounded-xl bg-[#171F33] border border-[#334155] p-6 shadow-2xl space-y-4"
+          >
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-display text-lg font-semibold text-white">Editar tarea técnica</h2>
+                <p className="text-[12px] text-[#B4C5FF] font-mono">
+                  {editingTask.code}
+                  {storyMap.get(editingTask.userStoryId)
+                    ? ` · ${storyMap.get(editingTask.userStoryId)?.title}`
+                    : ''}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setEditingTask(null)}
+                className="text-[#8D90A0] hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div>
+              <label className="block text-[12px] font-medium text-[#C3C6D7] mb-1.5">
+                Descripción técnica *
+              </label>
+              <textarea
+                rows={3}
+                autoFocus
+                value={editTaskDesc}
+                onChange={(e) => {
+                  setEditTaskDesc(e.target.value);
+                  setEditTaskError('');
+                }}
+                placeholder="Descripción técnica de la tarea"
+                className="w-full px-3.5 py-2 bg-[#0F172A] border border-[#334155] rounded-lg text-[13px] text-white focus:outline-none focus:border-[#3B82F6]"
+              />
+              {editTaskError && <p className="mt-1 text-[12px] text-[#FDA4AF]">{editTaskError}</p>}
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[12px] font-medium text-[#C3C6D7] mb-1.5">
+                  Estado
+                </label>
+                <select
+                  value={editTaskStatus}
+                  onChange={(e) => setEditTaskStatus(e.target.value as TaskStatus)}
+                  className="w-full px-3 py-2 bg-[#0F172A] border border-[#334155] rounded-lg text-[13px] text-white"
+                >
+                  {KANBAN_COLUMNS.map((col) => (
+                    <option key={col.id} value={col.id}>
+                      {col.title}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[12px] font-medium text-[#C3C6D7] mb-1.5">
+                  Responsable
+                </label>
+                <select
+                  value={editTaskAssigneeId}
+                  onChange={(e) => setEditTaskAssigneeId(e.target.value)}
+                  className="w-full px-3 py-2 bg-[#0F172A] border border-[#334155] rounded-lg text-[13px] text-white"
+                >
+                  <option value="">Sin asignar</option>
+                  {projectUsers.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.id === user?.id ? `${u.fullName} (Yo)` : u.fullName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setEditingTask(null)}
+                className="px-4 py-2 text-[13px] text-[#C3C6D7] hover:text-white rounded-lg hover:bg-[#222A3D]"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={savingEditTask}
+                className="px-4 py-2 text-[13px] font-medium bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg disabled:opacity-60"
+              >
+                {savingEditTask ? 'Guardando...' : 'Guardar cambios'}
               </button>
             </div>
           </form>
