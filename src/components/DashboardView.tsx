@@ -465,21 +465,31 @@ export function DashboardView({
                 </div>
 
                 {/* Progress & Active Sprint summary */}
-                <div className="space-y-3 pt-3.5 border-t border-graphite">
+                <div className="space-y-2.5 pt-3.5 border-t border-graphite">
                   <div className="flex items-center justify-between text-[12px]">
-                    {project.activeSprint ? (
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <SprintStatusText status="ACTIVE" />
-                        <span className="text-bone truncate font-medium">
-                          {project.activeSprint.name}
-                        </span>
-                      </div>
-                    ) : (
-                      <span className="text-fog italic">Sin Sprint activo</span>
-                    )}
+                    <div className="flex items-center gap-1.5 min-w-0">
+                      {project.activeSprint ? (
+                        <>
+                          <SprintStatusText status="ACTIVE" />
+                          <span className="text-bone truncate font-medium">
+                            {project.activeSprint.name}
+                          </span>
+                        </>
+                      ) : (
+                        <span className="text-fog italic">Sin Sprint activo</span>
+                      )}
+                    </div>
+                    <span className="text-[11px] text-fog shrink-0 font-medium">
+                      Alcance Global
+                    </span>
+                  </div>
+
+                  <div className="flex items-center justify-between text-[12px]">
+                    <span className="text-fog text-[11px]">Progreso del Proyecto</span>
                     <span className="font-mono tabular-nums text-fog shrink-0">
-                      <strong className="text-bone">{project.completedPoints}</strong>/
-                      {project.totalPoints} pts
+                      <strong className="text-bone">{project.completedPoints}</strong> /{' '}
+                      {project.totalPoints} pts{' '}
+                      <span className="text-signal-teal text-[11px]">({pct}%)</span>
                     </span>
                   </div>
 

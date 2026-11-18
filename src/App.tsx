@@ -336,7 +336,13 @@ function WorkspaceApp() {
                 onRefresh={refreshAll}
               />
             ) : (
-              <MetricsView project={currentProject} metrics={metrics} tasks={tasks} />
+              <MetricsView
+                project={currentProject}
+                metrics={metrics}
+                tasks={tasks}
+                sprints={sprints}
+                stories={stories}
+              />
             )}
           </motion.div>
         </AnimatePresence>
