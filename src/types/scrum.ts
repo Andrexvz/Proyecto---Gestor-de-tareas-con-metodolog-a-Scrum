@@ -108,3 +108,38 @@ export interface SprintMetricRow {
   totalStories: number;
   completedStories: number;
 }
+
+export interface AssignedTaskDetail {
+  id: number;
+  code: string;
+  description: string;
+  status: TaskStatus;
+  createdAt: string;
+  assignedToId: number | null;
+  assignee?: {
+    id: number;
+    fullName: string;
+    email: string;
+  };
+  story: {
+    id: number;
+    code: string;
+    title: string;
+    priority: StoryPriority;
+    storyPoints: number;
+    isCompleted: boolean;
+  };
+  project: {
+    id: number;
+    code: string;
+    name: string;
+    myRole: ScrumRole | 'ADMIN';
+  };
+  sprint: {
+    id: number;
+    name: string;
+    status: SprintStatus;
+    startDate: string;
+    endDate: string;
+  } | null;
+}

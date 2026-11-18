@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   LayoutGrid,
+  CheckSquare,
   ListTodo,
   CalendarRange,
   Kanban,
@@ -22,7 +23,7 @@ import { useAuth } from '../context/AuthContext';
 import { UserAvatar, formatRoleLabel } from './UIHelpers';
 import type { AppNotification, ProjectSummary } from '../types/scrum';
 
-export type ActiveRoute = 'dashboard' | 'backlog' | 'sprints' | 'kanban' | 'metrics';
+export type ActiveRoute = 'dashboard' | 'my-work' | 'backlog' | 'sprints' | 'kanban' | 'metrics';
 
 interface AppShellProps {
   route: ActiveRoute;
@@ -105,6 +106,7 @@ export function AppShell({
 
   const routeLabelMap: Record<ActiveRoute, string> = {
     dashboard: 'Proyectos',
+    'my-work': 'Mi Trabajo',
     backlog: 'Product Backlog',
     sprints: 'Planificación de Sprints',
     kanban: 'Tablero Kanban',
@@ -173,6 +175,7 @@ export function AppShell({
         >
           {/* Main Workspace Navigation */}
           <div className="space-y-1">
+            {/* Proyectos */}
             <div className="relative">
               <button
                 type="button"
@@ -207,6 +210,44 @@ export function AppShell({
               {collapsed && !isMobile && (
                 <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-md bg-obsidian border border-graphite text-[12px] font-medium text-paper whitespace-nowrap shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-50">
                   Proyectos
+                </div>
+              )}
+            </div>
+
+            {/* Mi Trabajo */}
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => {
+                  onNavigate('my-work');
+                  if (isMobile) setMobileMenuOpen(false);
+                }}
+                aria-current={route === 'my-work' ? 'page' : undefined}
+                className={`relative w-full flex items-center gap-2.5 px-3 py-2 rounded-inputs text-[13px] font-medium transition-colors whitespace-nowrap group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-iris-violet/50 ${
+                  route === 'my-work' ? 'text-paper' : 'text-mist hover:text-paper hover:bg-graphite/40'
+                }`}
+              >
+                {route === 'my-work' && (
+                  <motion.div
+                    layoutId="activeNavIndicator"
+                    className="absolute inset-0 rounded-inputs bg-iris-violet/15 border border-iris-violet/30 shadow-subtle -z-0"
+                    transition={
+                      shouldReduceMotion
+                        ? { duration: 0 }
+                        : { type: 'spring', stiffness: 400, damping: 32 }
+                    }
+                  />
+                )}
+                <CheckSquare className="w-4 h-4 shrink-0 relative z-10 transition-transform group-hover:scale-105 text-iris-violet" />
+                {(!collapsed || isMobile) && (
+                  <span className="relative z-10 font-medium">Mi Trabajo</span>
+                )}
+              </button>
+
+              {/* Tooltip for collapsed sidebar */}
+              {collapsed && !isMobile && (
+                <div className="absolute left-full ml-3 top-1/2 -translate-y-1/2 px-2.5 py-1 rounded-md bg-obsidian border border-graphite text-[12px] font-medium text-paper whitespace-nowrap shadow-xl opacity-0 pointer-events-none group-hover:opacity-100 transition-opacity duration-150 z-50">
+                  Mi Trabajo
                 </div>
               )}
             </div>

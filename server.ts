@@ -577,7 +577,17 @@ async function startServer() {
     }
   });
 
-  // --- TASKS (RF-09, RF-10, RF-11) ---
+  // --- TASKS (RF-09, RF-10, RF-11, Mi Trabajo) ---
+  app.get('/api/v1/users/me/tasks', authenticateToken, (req: AuthRequest, res) => {
+    try {
+      const scope = req.query.scope === 'all' ? 'all' : 'me';
+      const tasks = store.getUserAssignedTasks(req.user!, scope);
+      res.json({ tasks });
+    } catch (err: any) {
+      res.status(err.status || 400).json({ error: err.message });
+    }
+  });
+
   app.post('/api/v1/stories/:storyId/tasks', authenticateToken, (req: AuthRequest, res) => {
     const storyId = Number(req.params.storyId);
     if (!storyId || Number.isNaN(storyId)) {

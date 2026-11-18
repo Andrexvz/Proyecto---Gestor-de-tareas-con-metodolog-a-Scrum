@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Search,
+  CheckSquare,
   FolderKanban,
   ListTodo,
   CalendarRange,
@@ -67,6 +68,18 @@ export function CommandPalette({
         icon: FolderKanban,
         onSelect: () => {
           onNavigate('dashboard');
+          onClose();
+        },
+      },
+      {
+        id: 'go-my-work',
+        category: 'Navegación',
+        label: 'Ir a Mi Trabajo (Mis Tareas Asignadas)',
+        hint: 'Tareas personales y seguimiento',
+        badge: 'Mi Trabajo',
+        icon: CheckSquare,
+        onSelect: () => {
+          onNavigate('my-work');
           onClose();
         },
       },

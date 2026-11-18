@@ -8,6 +8,7 @@ import { apiFetch } from './lib/api';
 import { LoginView } from './components/LoginView';
 import { AppShell, type ActiveRoute } from './components/AppShell';
 import { DashboardView } from './components/DashboardView';
+import { MyWorkView } from './components/MyWorkView';
 import { BacklogView } from './components/BacklogView';
 import { SprintsView } from './components/SprintsView';
 import { KanbanView } from './components/KanbanView';
@@ -29,6 +30,9 @@ import type {
 
 function parseLocation(): { route: ActiveRoute; projectId: number | null } {
   const pathname = window.location.pathname;
+  if (pathname === '/my-work') {
+    return { route: 'my-work', projectId: null };
+  }
   const match = pathname.match(/^\/projects\/(\d+)\/(backlog|sprints|kanban|metrics)$/);
   if (match) {
     return {
@@ -90,7 +94,11 @@ function WorkspaceApp() {
       setSelectedProjectId(projectId);
     }
     const nextUrl =
-      nextRoute === 'dashboard' || !projectId
+      nextRoute === 'dashboard'
+        ? '/dashboard'
+        : nextRoute === 'my-work'
+        ? '/my-work'
+        : !projectId
         ? '/dashboard'
         : `/projects/${projectId}/${nextRoute}`;
     if (window.location.pathname !== nextUrl) {
@@ -288,7 +296,9 @@ function WorkspaceApp() {
             transition={{ duration: 0.16, ease: 'easeOut' }}
             className="w-full"
           >
-            {route === 'dashboard' || !currentProject ? (
+            {route === 'my-work' ? (
+              <MyWorkView onNavigate={navigate} />
+            ) : route === 'dashboard' || !currentProject ? (
               <DashboardView
                 projects={projects}
                 users={users}
@@ -297,6 +307,12 @@ function WorkspaceApp() {
                 onRetry={loadDashboardData}
                 onOpenProject={(pid, target = 'backlog') => navigate(target, pid)}
                 onRefreshProjects={loadDashboardData}
+                onNavigate={navigate}
+                onQuickCreateStory={(pid) => {
+                  if (pid) setSelectedProjectId(pid);
+                  setEditingStory(null);
+                  setStoryModalOpen(true);
+                }}
               />
             ) : route === 'backlog' ? (
               <BacklogView

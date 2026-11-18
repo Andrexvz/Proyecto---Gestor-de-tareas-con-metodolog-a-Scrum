@@ -13,6 +13,12 @@ import {
   Zap,
   Kanban,
   ListTodo,
+  CheckSquare,
+  Sparkles,
+  CalendarRange,
+  Target,
+  Shield,
+  Filter,
 } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -40,6 +46,8 @@ interface DashboardViewProps {
   onRetry: () => void;
   onOpenProject: (projectId: number, route?: ActiveRoute) => void;
   onRefreshProjects: () => Promise<void>;
+  onNavigate?: (route: ActiveRoute, projectId?: number) => void;
+  onQuickCreateStory?: (projectId?: number) => void;
 }
 
 export function DashboardView({
@@ -50,11 +58,16 @@ export function DashboardView({
   onRetry,
   onOpenProject,
   onRefreshProjects,
+  onNavigate,
+  onQuickCreateStory,
 }: DashboardViewProps) {
   const { user } = useAuth();
   const { showToast } = useToast();
   const shouldReduceMotion = useReducedMotion();
   const isAdmin = user?.globalRole === 'ADMIN';
+
+  // Role perspective filter (Auto / PO / SM / Dev / Admin)
+  const [rolePerspective, setRolePerspective] = useState<'AUTO' | ScrumRole | 'ADMIN'>('AUTO');
 
   // Create Project Modal
   const [createOpen, setCreateOpen] = useState(false);
@@ -208,17 +221,35 @@ export function DashboardView({
     ? projects.find((p) => p.id === teamProject.id) ?? teamProject
     : null;
 
+  // Determine effective role & contextual helpers
+  const activeProjectWithSprint = useMemo(
+    () => projects.find((p) => p.activeSprint !== null) ?? null,
+    [projects]
+  );
+  const firstProj = projects[0] ?? null;
+
+  const effectiveRole = useMemo(() => {
+    if (rolePerspective !== 'AUTO') return rolePerspective;
+    if (isAdmin) return 'ADMIN';
+    if (projects.some((p) => p.myRole === 'PRODUCT_OWNER')) return 'PRODUCT_OWNER';
+    if (projects.some((p) => p.myRole === 'SCRUM_MASTER')) return 'SCRUM_MASTER';
+    return 'DEVELOPER';
+  }, [rolePerspective, isAdmin, projects]);
+
   return (
     <div className="space-y-6">
       {/* Header with Title & Quick Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2.5">
+          <div className="flex items-center gap-2.5 flex-wrap">
             <h1 className="font-display text-2xl font-semibold text-bone tracking-tight">
               Dashboard de Proyectos Scrum
             </h1>
             <Badge variant="purple" shape="pill">
               {projects.length} {projects.length === 1 ? 'Espacio' : 'Espacios'}
+            </Badge>
+            <Badge variant="info" size="sm">
+              Enfoque: {formatRoleLabel(effectiveRole)}
             </Badge>
           </div>
           <p className="mt-1 text-[13px] text-fog leading-relaxed">
@@ -226,26 +257,175 @@ export function DashboardView({
           </p>
         </div>
 
-        {isAdmin && (
-          <div className="flex items-center gap-2.5 shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setUserModalOpen(true)}
-              icon={<UserPlus className="w-3.5 h-3.5" />}
+        <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+          {/* Role Perspective Selector */}
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-inputs bg-carbon border border-graphite text-[12px]">
+            <Filter className="w-3.5 h-3.5 text-fog shrink-0" />
+            <span className="text-fog text-[11px]">Perspectiva:</span>
+            <select
+              value={rolePerspective}
+              onChange={(e) => setRolePerspective(e.target.value as any)}
+              className="bg-transparent text-bone font-medium focus:outline-none cursor-pointer pr-1"
+              aria-label="Perspectiva de Rol"
             >
-              Registrar usuario
+              <option value="AUTO" className="bg-carbon text-bone">
+                Auto ({formatRoleLabel(effectiveRole)})
+              </option>
+              <option value="ADMIN" className="bg-carbon text-bone">
+                Administrador
+              </option>
+              <option value="PRODUCT_OWNER" className="bg-carbon text-bone">
+                Product Owner
+              </option>
+              <option value="SCRUM_MASTER" className="bg-carbon text-bone">
+                Scrum Master
+              </option>
+              <option value="DEVELOPER" className="bg-carbon text-bone">
+                Developer
+              </option>
+            </select>
+          </div>
+
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setUserModalOpen(true)}
+                icon={<UserPlus className="w-3.5 h-3.5" />}
+              >
+                Registrar usuario
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setCreateOpen(true)}
+                icon={<Plus className="w-3.5 h-3.5" />}
+              >
+                Crear proyecto
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Bloque de Acciones Frecuentes / Rápidas */}
+      <div className="p-3.5 rounded-cards bg-carbon border border-graphite shadow-subtle flex flex-col md:flex-row md:items-center justify-between gap-3">
+        <div className="flex items-center gap-2 text-[12px] text-fog font-medium">
+          <Sparkles className="w-4 h-4 text-iris-violet shrink-0" />
+          <span className="text-bone font-semibold">Acciones Frecuentes:</span>
+        </div>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={() =>
+              onNavigate ? onNavigate('my-work') : onOpenProject(firstProj?.id || 1, 'kanban')
+            }
+            icon={<CheckSquare className="w-3.5 h-3.5 text-iris-violet" />}
+            title="Consultar todas las tareas asignadas en tus proyectos"
+          >
+            Ver mis tareas
+          </Button>
+
+          {activeProjectWithSprint && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => onOpenProject(activeProjectWithSprint.id, 'sprints')}
+              icon={<CalendarRange className="w-3.5 h-3.5 text-signal-teal" />}
+              title={`Abrir Sprint activo: ${activeProjectWithSprint.activeSprint?.name}`}
+            >
+              Abrir Sprint activo
             </Button>
+          )}
+
+          {firstProj && (
+            <>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => onOpenProject(firstProj.id, 'kanban')}
+                icon={<Kanban className="w-3.5 h-3.5 text-pulse-green" />}
+                title="Abrir Tablero Kanban de historias y tareas técnicas"
+              >
+                Ir al Kanban
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => onOpenProject(firstProj.id, 'backlog')}
+                icon={<ListTodo className="w-3.5 h-3.5 text-lavender" />}
+                title="Explorar y priorizar el Product Backlog"
+              >
+                Product Backlog
+              </Button>
+            </>
+          )}
+
+          {(isAdmin || effectiveRole === 'PRODUCT_OWNER') && firstProj && (
             <Button
               variant="primary"
               size="sm"
-              onClick={() => setCreateOpen(true)}
+              onClick={() =>
+                onQuickCreateStory
+                  ? onQuickCreateStory(firstProj.id)
+                  : onOpenProject(firstProj.id, 'backlog')
+              }
               icon={<Plus className="w-3.5 h-3.5" />}
+              title="Crear nueva historia de usuario con asistencia IA"
             >
-              Crear proyecto
+              Crear historia
             </Button>
-          </div>
-        )}
+          )}
+        </div>
+      </div>
+
+      {/* Role-Specific Contextual Guidance Banner */}
+      <div className="p-4 rounded-cards bg-carbon/80 border border-graphite/70 shadow-subtle flex items-start gap-3.5">
+        <div className="p-2 rounded-lg bg-iris-violet/10 text-iris-violet shrink-0 mt-0.5">
+          {effectiveRole === 'PRODUCT_OWNER' ? (
+            <Target className="w-5 h-5" />
+          ) : effectiveRole === 'SCRUM_MASTER' ? (
+            <Activity className="w-5 h-5" />
+          ) : effectiveRole === 'DEVELOPER' ? (
+            <CheckSquare className="w-5 h-5" />
+          ) : (
+            <Shield className="w-5 h-5" />
+          )}
+        </div>
+        <div className="text-[12px] space-y-1 text-mist">
+          <p className="font-semibold text-bone text-[13px] flex items-center gap-2">
+            <span>Enfoque de Rol: {formatRoleLabel(effectiveRole)}</span>
+            <span className="text-fog font-normal text-[11px]">
+              (Adaptado a tus responsabilidades Scrum)
+            </span>
+          </p>
+          {effectiveRole === 'PRODUCT_OWNER' && (
+            <p className="leading-relaxed">
+              Supervisa la entrega de valor y la prioridad del negocio. Dispones de{' '}
+              <strong className="text-bone">{stats.totalStories - stats.completedStories} historias pendientes</strong>{' '}
+              de entrega en el Product Backlog ({stats.totalPoints} Story Points totales). Puedes priorizar historias con MoSCoW o generar nuevas con el Asistente IA.
+            </p>
+          )}
+          {effectiveRole === 'SCRUM_MASTER' && (
+            <p className="leading-relaxed">
+              Facilita el flujo iterativo y remueve impedimentos.{' '}
+              <strong className="text-bone">{stats.activeSprintsCount} Sprint activo</strong> en ejecución. Monitorea el ritmo del equipo, el cumplimiento de Story Points y la transición fluida de tareas en el Tablero Kanban.
+            </p>
+          )}
+          {effectiveRole === 'DEVELOPER' && (
+            <p className="leading-relaxed">
+              Enfocado en ejecución técnica y calidad. Accede a{' '}
+              <strong className="text-bone">Mi Trabajo</strong> para mover el estado de tus tareas asignadas o interactúa directamente con el Tablero Kanban en arrastre y soltado fluido.
+            </p>
+          )}
+          {effectiveRole === 'ADMIN' && (
+            <p className="leading-relaxed">
+              Gobernanza global de Agile Velocity. Administra membresías de proyectos ({stats.totalProjects} espacios activos), registra nuevos usuarios en el sistema y supervisa el estado general de la plataforma.
+            </p>
+          )}
+        </div>
       </div>
 
       {/* Network Error Alert */}

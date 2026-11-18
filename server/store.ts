@@ -4,6 +4,7 @@ import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import type {
   AppNotification,
+  AssignedTaskDetail,
   GlobalRole,
   Project,
   ProjectMembership,
@@ -975,6 +976,80 @@ class ScrumStore {
       this.db.stories.filter((s) => s.projectId === projectId).map((s) => s.id)
     );
     return this.db.tasks.filter((t) => storyIds.has(t.userStoryId));
+  }
+
+  public getUserAssignedTasks(user: StoredUser, scope: 'me' | 'all' = 'me'): AssignedTaskDetail[] {
+    // 1. Get visible projects for this user to enforce strict security boundaries
+    const visibleProjects = this.getProjectsForUser(user);
+    const visibleProjectIds = new Set(visibleProjects.map((p) => p.id));
+    const projectMap = new Map(visibleProjects.map((p) => [p.id, p]));
+
+    // 2. Index stories and sprints belonging to authorized projects
+    const storiesMap = new Map(
+      this.db.stories.filter((s) => visibleProjectIds.has(s.projectId)).map((s) => [s.id, s])
+    );
+    const sprintsMap = new Map(
+      this.db.sprints.filter((sp) => visibleProjectIds.has(sp.projectId)).map((sp) => [sp.id, sp])
+    );
+
+    // 3. Filter tasks: either assigned to this user, or all in project if admin/scrum master
+    const relevantTasks = this.db.tasks.filter((t) => {
+      const story = storiesMap.get(t.userStoryId);
+      if (!story) return false;
+      if (scope === 'all') {
+        const proj = projectMap.get(story.projectId);
+        const canSeeAll = user.globalRole === 'ADMIN' || proj?.myRole === 'SCRUM_MASTER';
+        return canSeeAll || t.assignedToId === user.id;
+      }
+      return t.assignedToId === user.id;
+    });
+
+    // 4. Enrich with story, sprint, project, and assignee details
+    return relevantTasks.map((t) => {
+      const story = storiesMap.get(t.userStoryId)!;
+      const project = projectMap.get(story.projectId)!;
+      const sprint = story.sprintId ? sprintsMap.get(story.sprintId) ?? null : null;
+      const assigneeUser = t.assignedToId ? this.findUserById(t.assignedToId) : null;
+
+      return {
+        id: t.id,
+        code: t.code,
+        description: t.description,
+        status: t.status,
+        createdAt: t.createdAt,
+        assignedToId: t.assignedToId,
+        assignee: assigneeUser
+          ? {
+              id: assigneeUser.id,
+              fullName: assigneeUser.fullName,
+              email: assigneeUser.email,
+            }
+          : undefined,
+        story: {
+          id: story.id,
+          code: story.code,
+          title: story.title,
+          priority: story.priority,
+          storyPoints: story.storyPoints,
+          isCompleted: story.isCompleted,
+        },
+        project: {
+          id: project.id,
+          code: project.code,
+          name: project.name,
+          myRole: project.myRole,
+        },
+        sprint: sprint
+          ? {
+              id: sprint.id,
+              name: sprint.name,
+              status: sprint.status,
+              startDate: sprint.startDate,
+              endDate: sprint.endDate,
+            }
+          : null,
+      };
+    });
   }
 
   public getTaskById(taskId: number): TaskItem | undefined {
