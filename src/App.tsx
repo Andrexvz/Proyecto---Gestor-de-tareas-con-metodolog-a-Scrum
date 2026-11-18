@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { Plus } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider, useToast } from './context/ToastContext';
 import { apiFetch } from './lib/api';
@@ -12,6 +13,7 @@ import { KanbanView } from './components/KanbanView';
 import { MetricsView } from './components/MetricsView';
 import { StoryModal } from './components/StoryModal';
 import { CommandPalette } from './components/CommandPalette';
+import { Button } from './components/ui';
 import type {
   AppNotification,
   ProjectSummary,
@@ -37,6 +39,7 @@ function parseLocation(): { route: ActiveRoute; projectId: number | null } {
 function WorkspaceApp() {
   const { user, loading: authLoading } = useAuth();
   const { showToast } = useToast();
+  const shouldReduceMotion = useReducedMotion();
 
   const initialLoc = useMemo(() => parseLocation(), []);
   const [route, setRoute] = useState<ActiveRoute>(initialLoc.route);
@@ -195,8 +198,9 @@ function WorkspaceApp() {
 
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-[#0B0F17] flex items-center justify-center">
-        <div className="w-8 h-8 rounded-full border-2 border-[#2563EB] border-t-transparent animate-spin" />
+      <div className="min-h-screen bg-void flex flex-col items-center justify-center gap-3">
+        <div className="w-8 h-8 rounded-full border-2 border-iris-violet border-t-transparent animate-spin" />
+        <span className="text-[12px] text-fog font-mono">Cargando Agile Velocity...</span>
       </div>
     );
   }
@@ -227,17 +231,17 @@ function WorkspaceApp() {
 
   const primaryHeaderAction =
     currentProject && route === 'backlog' && canCreateStory ? (
-      <button
-        type="button"
+      <Button
+        variant="primary"
+        size="sm"
         onClick={() => {
           setEditingStory(null);
           setStoryModalOpen(true);
         }}
-        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-buttons bg-iris-violet hover:bg-iris-violet/90 text-[12px] font-medium text-paper transition-colors whitespace-nowrap shadow-sm"
+        icon={<Plus className="w-3.5 h-3.5" />}
       >
-        <Plus className="w-3.5 h-3.5" />
         Nueva historia
-      </button>
+      </Button>
     ) : null;
 
   return (
@@ -252,56 +256,67 @@ function WorkspaceApp() {
         onOpenCommandPalette={() => setCommandOpen(true)}
         primaryAction={primaryHeaderAction}
       >
-        {route === 'dashboard' || !currentProject ? (
-          <DashboardView
-            projects={projects}
-            users={users}
-            loading={projectsLoading}
-            loadError={projectsError}
-            onRetry={loadDashboardData}
-            onOpenProject={(pid, target = 'backlog') => navigate(target, pid)}
-            onRefreshProjects={loadDashboardData}
-          />
-        ) : route === 'backlog' ? (
-          <BacklogView
-            project={currentProject}
-            sprints={sprints}
-            stories={stories}
-            tasks={tasks}
-            loading={workspaceLoading}
-            onNewStory={() => {
-              setEditingStory(null);
-              setStoryModalOpen(true);
-            }}
-            onEditStory={(st) => {
-              setEditingStory(st);
-              setStoryModalOpen(true);
-            }}
-            onGoToSprints={() => navigate('sprints', currentProject.id)}
-            onRefresh={refreshAll}
-          />
-        ) : route === 'sprints' ? (
-          <SprintsView
-            project={currentProject}
-            sprints={sprints}
-            stories={stories}
-            onGoToKanban={() => navigate('kanban', currentProject.id)}
-            onRefresh={refreshAll}
-          />
-        ) : route === 'kanban' ? (
-          <KanbanView
-            project={currentProject}
-            sprints={sprints}
-            stories={stories}
-            tasks={tasks}
-            allUsers={users}
-            loading={workspaceLoading}
-            onGoToSprints={() => navigate('sprints', currentProject.id)}
-            onRefresh={refreshAll}
-          />
-        ) : (
-          <MetricsView project={currentProject} metrics={metrics} tasks={tasks} />
-        )}
+        <AnimatePresence mode="wait">
+          <motion.div
+            key={`${route}-${selectedProjectId ?? 'global'}`}
+            initial={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: 6 }}
+            animate={shouldReduceMotion ? { opacity: 1 } : { opacity: 1, y: 0 }}
+            exit={shouldReduceMotion ? { opacity: 0 } : { opacity: 0, y: -6 }}
+            transition={{ duration: 0.16, ease: 'easeOut' }}
+            className="w-full"
+          >
+            {route === 'dashboard' || !currentProject ? (
+              <DashboardView
+                projects={projects}
+                users={users}
+                loading={projectsLoading}
+                loadError={projectsError}
+                onRetry={loadDashboardData}
+                onOpenProject={(pid, target = 'backlog') => navigate(target, pid)}
+                onRefreshProjects={loadDashboardData}
+              />
+            ) : route === 'backlog' ? (
+              <BacklogView
+                project={currentProject}
+                sprints={sprints}
+                stories={stories}
+                tasks={tasks}
+                loading={workspaceLoading}
+                onNewStory={() => {
+                  setEditingStory(null);
+                  setStoryModalOpen(true);
+                }}
+                onEditStory={(st) => {
+                  setEditingStory(st);
+                  setStoryModalOpen(true);
+                }}
+                onGoToSprints={() => navigate('sprints', currentProject.id)}
+                onRefresh={refreshAll}
+              />
+            ) : route === 'sprints' ? (
+              <SprintsView
+                project={currentProject}
+                sprints={sprints}
+                stories={stories}
+                onGoToKanban={() => navigate('kanban', currentProject.id)}
+                onRefresh={refreshAll}
+              />
+            ) : route === 'kanban' ? (
+              <KanbanView
+                project={currentProject}
+                sprints={sprints}
+                stories={stories}
+                tasks={tasks}
+                allUsers={users}
+                loading={workspaceLoading}
+                onGoToSprints={() => navigate('sprints', currentProject.id)}
+                onRefresh={refreshAll}
+              />
+            ) : (
+              <MetricsView project={currentProject} metrics={metrics} tasks={tasks} />
+            )}
+          </motion.div>
+        </AnimatePresence>
       </AppShell>
 
       {currentProject && (
