@@ -137,30 +137,30 @@ export function CommandPalette({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-start justify-center pt-[14vh] bg-black/70 backdrop-blur-[2px] px-4"
+      className="fixed inset-0 z-50 flex items-start justify-center pt-[14vh] bg-void/80 backdrop-blur-sm px-4 animate-in fade-in duration-150"
       onClick={onClose}
     >
       <div
-        className="w-full max-w-lg rounded-xl bg-[#171F33] border border-[#334155] shadow-2xl overflow-hidden"
+        className="w-full max-w-lg rounded-cards bg-obsidian border border-graphite shadow-xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center gap-3 px-4 py-3 border-b border-[#2D3449]">
-          <Search className="w-4 h-4 text-[#8D90A0] shrink-0" />
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-graphite">
+          <Search className="w-4 h-4 text-fog shrink-0" />
           <input
             autoFocus
             type="text"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Ir a tablero, backlog, proyecto o crear historia..."
-            className="flex-1 bg-transparent text-[13px] text-white placeholder-[#64748B] focus:outline-none"
+            className="flex-1 bg-transparent text-[13px] text-bone placeholder:text-ash focus:outline-none"
           />
-          <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[#0F172A] text-[#8D90A0] border border-[#2D3449]">
+          <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded-sm bg-carbon text-fog border border-graphite">
             ESC
           </kbd>
         </div>
         <div className="max-h-72 overflow-y-auto p-2 space-y-0.5">
           {filtered.length === 0 ? (
-            <p className="py-8 text-center text-[12px] text-[#8D90A0]">
+            <p className="py-8 text-center text-[12px] text-fog">
               Sin resultados para «{query}».
             </p>
           ) : (
@@ -171,15 +171,15 @@ export function CommandPalette({
                   key={item.id}
                   type="button"
                   onClick={item.onSelect}
-                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg text-left hover:bg-[#222A3D] transition-colors group"
+                  className="w-full flex items-center justify-between px-3 py-2.5 rounded-inputs text-left hover:bg-graphite/60 transition-colors group"
                 >
                   <div className="flex items-center gap-3 min-w-0">
-                    <Icon className="w-4 h-4 text-[#8D90A0] group-hover:text-[#B4C5FF] shrink-0" />
-                    <span className="text-[13px] text-[#DAE2FD] group-hover:text-white truncate">
+                    <Icon className="w-4 h-4 text-fog group-hover:text-signal-teal shrink-0" />
+                    <span className="text-[13px] text-mist group-hover:text-paper truncate">
                       {item.label}
                     </span>
                   </div>
-                  <span className="text-[11px] font-mono text-[#8D90A0] ml-3 shrink-0">
+                  <span className="text-[11px] font-mono text-fog ml-3 shrink-0">
                     {item.hint}
                   </span>
                 </button>

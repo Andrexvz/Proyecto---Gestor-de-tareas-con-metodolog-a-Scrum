@@ -176,27 +176,27 @@ export function StoryModal({
   return (
     <>
       <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px] p-4 overflow-y-auto"
+        className="fixed inset-0 z-50 flex items-center justify-center bg-void/80 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-150"
         onClick={attemptClose}
       >
         <form
           onSubmit={handleSubmit}
           onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-2xl rounded-xl bg-[#171F33] border border-[#334155] p-6 shadow-2xl space-y-5 my-auto"
+          className="w-full max-w-2xl rounded-cards bg-obsidian border border-graphite p-6 shadow-xl space-y-5 my-auto"
         >
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h2 className="font-display text-lg font-semibold text-white">
+              <h2 className="font-display text-lg font-semibold text-bone">
                 {editingStory ? `Editar historia · ${editingStory.code}` : 'Nueva historia de usuario'}
               </h2>
-              <p className="text-[12px] text-[#8D90A0]">
+              <p className="text-[12px] text-fog">
                 Define el requerimiento funcional, criterios de aceptación y estimación.
               </p>
             </div>
             <button
               type="button"
               onClick={attemptClose}
-              className="p-1.5 rounded-md text-[#8D90A0] hover:text-white hover:bg-[#222A3D]"
+              className="p-1.5 rounded-inputs text-fog hover:text-paper hover:bg-graphite"
             >
               <X className="w-4 h-4" />
             </button>
@@ -205,7 +205,7 @@ export function StoryModal({
           {/* Title + AI Assistant Trigger */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
-              <label className="text-[12px] font-medium text-[#C3C6D7]">
+              <label className="text-[12px] font-medium text-mist">
                 Título o idea inicial *
               </label>
               {canUseAi && (
@@ -213,7 +213,7 @@ export function StoryModal({
                   type="button"
                   onClick={handleAiAssist}
                   disabled={aiGenerating || saving}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#7C3AED] hover:bg-[#6D28D9] text-white text-[12px] font-medium transition-all shadow-[0_0_14px_-2px_rgba(124,58,237,0.5)] disabled:opacity-60 whitespace-nowrap"
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-buttons bg-lavender hover:bg-lavender/90 text-paper text-[12px] font-medium transition-all shadow-sm disabled:opacity-60 whitespace-nowrap"
                 >
                   {aiGenerating ? (
                     <>
@@ -238,19 +238,19 @@ export function StoryModal({
                 setFieldErrors((p) => ({ ...p, title: undefined, ai: undefined }));
               }}
               placeholder="Ej. Autenticación con huella digital para banca móvil"
-              className="w-full px-3.5 py-2.5 bg-[#0F172A] border border-[#334155] rounded-lg text-[13px] text-white placeholder-[#64748B] focus:outline-none focus:border-[#3B82F6] disabled:opacity-60"
+              className="w-full px-3.5 py-2.5 bg-carbon border border-graphite rounded-inputs text-[13px] text-bone placeholder:text-ash focus:outline-none focus:border-iris-violet focus:ring-1 focus:ring-iris-violet disabled:opacity-60 shadow-subtle"
             />
             {fieldErrors.title && (
-              <p className="text-[12px] text-[#FDA4AF]">{fieldErrors.title}</p>
+              <p className="text-[12px] text-coral-red">{fieldErrors.title}</p>
             )}
             {fieldErrors.ai && (
-              <p className="text-[12px] text-[#FDA4AF]">{fieldErrors.ai}</p>
+              <p className="text-[12px] text-coral-red">{fieldErrors.ai}</p>
             )}
           </div>
 
           {/* Description */}
           <div className="space-y-1.5">
-            <label className="block text-[12px] font-medium text-[#C3C6D7]">
+            <label className="block text-[12px] font-medium text-mist">
               Descripción (Como [rol], quiero [acción], para [beneficio])
             </label>
             <textarea
@@ -259,10 +259,10 @@ export function StoryModal({
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Como usuario móvil, quiero autenticarme mediante mi huella dactilar, para ingresar rápidamente sin escribir mi contraseña."
-              className={`w-full px-3.5 py-2.5 bg-[#0F172A] rounded-lg text-[13px] text-white placeholder-[#64748B] focus:outline-none disabled:opacity-60 transition-shadow ${
+              className={`w-full px-3.5 py-2.5 bg-carbon rounded-inputs text-[13px] text-bone placeholder:text-ash focus:outline-none disabled:opacity-60 transition-shadow shadow-subtle ${
                 aiHighlighted
-                  ? 'border border-[#8B5CF6] shadow-[0_0_0_1px_rgba(139,92,246,0.35)]'
-                  : 'border border-[#334155] focus:border-[#3B82F6]'
+                  ? 'border border-lavender shadow-[0_0_0_1px_rgba(139,92,246,0.35)]'
+                  : 'border border-graphite focus:border-iris-violet focus:ring-1 focus:ring-iris-violet'
               }`}
             />
           </div>
@@ -270,29 +270,29 @@ export function StoryModal({
           {/* Acceptance Criteria */}
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-[12px] font-medium text-[#C3C6D7]">
+              <label className="text-[12px] font-medium text-mist">
                 Criterios de Aceptación
               </label>
               <button
                 type="button"
                 disabled={aiGenerating}
                 onClick={() => setCriteria((prev) => [...prev, ''])}
-                className="inline-flex items-center gap-1 text-[12px] text-[#B4C5FF] hover:text-white"
+                className="inline-flex items-center gap-1 text-[12px] text-signal-teal hover:text-paper"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Agregar criterio
               </button>
             </div>
             <div
-              className={`space-y-2 p-3 rounded-lg bg-[#0F172A] ${
+              className={`space-y-2 p-3 rounded-inputs bg-carbon ${
                 aiHighlighted
-                  ? 'border border-[#8B5CF6]/70'
-                  : 'border border-[#2D3449]'
+                  ? 'border border-lavender/70'
+                  : 'border border-graphite'
               }`}
             >
               {criteria.map((item, idx) => (
                 <div key={idx} className="flex items-center gap-2">
-                  <span className="font-mono text-[11px] text-[#64748B] w-5 text-right shrink-0">
+                  <span className="font-mono text-[11px] text-ash w-5 text-right shrink-0">
                     {idx + 1}.
                   </span>
                   <input
@@ -305,14 +305,14 @@ export function StoryModal({
                       setCriteria(next);
                     }}
                     placeholder="Criterio verificable..."
-                    className="flex-1 px-2.5 py-1.5 bg-[#131B2E] border border-[#2D3449] rounded-md text-[12px] text-white placeholder-[#64748B] focus:outline-none focus:border-[#3B82F6] disabled:opacity-60"
+                    className="flex-1 px-2.5 py-1.5 bg-obsidian border border-graphite rounded-inputs text-[12px] text-bone placeholder:text-ash focus:outline-none focus:border-iris-violet disabled:opacity-60"
                   />
                   {criteria.length > 1 && (
                     <button
                       type="button"
                       disabled={aiGenerating}
                       onClick={() => setCriteria((prev) => prev.filter((_, i) => i !== idx))}
-                      className="p-1 text-[#8D90A0] hover:text-[#F43F5E]"
+                      className="p-1 text-fog hover:text-coral-red"
                       aria-label="Eliminar criterio"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -326,10 +326,10 @@ export function StoryModal({
           {/* Priority & Story Points */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label className="block text-[12px] font-medium text-[#C3C6D7] mb-1.5">
+              <label className="block text-[12px] font-medium text-mist mb-1.5">
                 Prioridad *
               </label>
-              <div className="grid grid-cols-3 gap-1.5 p-1 bg-[#0F172A] border border-[#2D3449] rounded-lg">
+              <div className="grid grid-cols-3 gap-1.5 p-1 bg-carbon border border-graphite rounded-inputs shadow-subtle">
                 {(['HIGH', 'MEDIUM', 'LOW'] as StoryPriority[]).map((p) => {
                   const labels: Record<StoryPriority, string> = {
                     HIGH: 'Alta',
@@ -343,10 +343,10 @@ export function StoryModal({
                       type="button"
                       disabled={aiGenerating}
                       onClick={() => setPriority(p)}
-                      className={`py-1.5 text-[12px] font-medium rounded-md transition-colors ${
+                      className={`py-1.5 text-[12px] font-medium rounded-inputs transition-colors ${
                         active
-                          ? 'bg-[#2563EB] text-white'
-                          : 'text-[#8D90A0] hover:text-white'
+                          ? 'bg-iris-violet text-paper shadow-sm'
+                          : 'text-fog hover:text-paper'
                       }`}
                     >
                       {labels[p]}
@@ -357,7 +357,7 @@ export function StoryModal({
             </div>
 
             <div>
-              <label className="block text-[12px] font-medium text-[#C3C6D7] mb-1.5">
+              <label className="block text-[12px] font-medium text-mist mb-1.5">
                 Story Points (≥ 0)
               </label>
               <div className="flex items-center gap-2">
@@ -371,7 +371,7 @@ export function StoryModal({
                     setStoryPoints(e.target.value);
                     setFieldErrors((p) => ({ ...p, points: undefined }));
                   }}
-                  className="w-24 px-3 py-2 bg-[#0F172A] border border-[#334155] rounded-lg text-[13px] font-mono tabular-nums text-white focus:outline-none focus:border-[#3B82F6]"
+                  className="w-24 px-3 py-2 bg-carbon border border-graphite rounded-inputs text-[13px] font-mono tabular-nums text-bone focus:outline-none focus:border-iris-violet shadow-subtle"
                 />
                 <div className="flex items-center gap-1">
                   {[1, 2, 3, 5, 8, 13].map((pt) => (
@@ -380,10 +380,10 @@ export function StoryModal({
                       type="button"
                       disabled={aiGenerating}
                       onClick={() => setStoryPoints(String(pt))}
-                      className={`px-2 py-1.5 rounded-md font-mono text-[11px] transition-colors ${
+                      className={`px-2 py-1.5 rounded-inputs font-mono text-[11px] transition-colors ${
                         Number(storyPoints) === pt
-                          ? 'bg-[#2563EB]/25 text-[#B4C5FF] border border-[#3B82F6]/40'
-                          : 'bg-[#0F172A] text-[#8D90A0] hover:text-white border border-[#2D3449]'
+                          ? 'bg-iris-violet/20 text-signal-teal border border-iris-violet/30 shadow-subtle'
+                          : 'bg-carbon text-fog hover:text-paper border border-graphite'
                       }`}
                     >
                       {pt}
@@ -392,24 +392,24 @@ export function StoryModal({
                 </div>
               </div>
               {fieldErrors.points && (
-                <p className="mt-1 text-[12px] text-[#FDA4AF]">{fieldErrors.points}</p>
+                <p className="mt-1 text-[12px] text-coral-red">{fieldErrors.points}</p>
               )}
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-[#222A3D]">
+          <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-graphite">
             <button
               type="button"
               onClick={attemptClose}
               disabled={aiGenerating || saving}
-              className="px-4 py-2 text-[13px] text-[#C3C6D7] hover:text-white rounded-lg hover:bg-[#222A3D] transition-colors"
+              className="px-4 py-2 text-[13px] text-mist hover:text-paper rounded-buttons hover:bg-graphite transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={aiGenerating || saving}
-              className="px-4 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-[13px] font-medium rounded-lg transition-colors disabled:opacity-60"
+              className="px-4 py-2 bg-iris-violet hover:bg-iris-violet/90 text-paper text-[13px] font-medium rounded-buttons transition-colors disabled:opacity-60 shadow-sm"
             >
               {saving ? 'Guardando...' : 'Guardar historia'}
             </button>

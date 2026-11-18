@@ -67,9 +67,9 @@ export function AppShell({
   };
 
   const renderSidebarContent = (isMobile = false) => (
-    <div className="flex flex-col h-full bg-[#0F172A] border-r border-[#1E293B]">
+    <div className="flex flex-col h-full bg-carbon border-r border-graphite">
       {/* Brand header */}
-      <div className="h-14 px-4 flex items-center justify-between border-b border-[#1E293B] shrink-0">
+      <div className="h-14 px-4 flex items-center justify-between border-b border-graphite shrink-0">
         <button
           type="button"
           onClick={() => {
@@ -78,11 +78,11 @@ export function AppShell({
           }}
           className="flex items-center gap-2.5 min-w-0 text-left"
         >
-          <div className="w-7 h-7 rounded-md bg-[#2563EB] flex items-center justify-center text-white font-display font-bold text-xs shrink-0">
+          <div className="w-7 h-7 rounded-inputs bg-iris-violet flex items-center justify-center text-paper font-display font-bold text-xs shrink-0 shadow-sm">
             AV
           </div>
           {(!collapsed || isMobile) && (
-            <span className="font-display font-semibold text-[15px] text-white tracking-tight whitespace-nowrap truncate">
+            <span className="font-display font-semibold text-[15px] text-bone tracking-tight whitespace-nowrap truncate">
               Agile Velocity
             </span>
           )}
@@ -92,7 +92,7 @@ export function AppShell({
           <button
             type="button"
             onClick={() => setCollapsed((c) => !c)}
-            className="p-1.5 rounded-md text-[#8D90A0] hover:text-white hover:bg-[#1E293B] transition-colors shrink-0"
+            className="p-1.5 rounded-inputs text-fog hover:text-paper hover:bg-graphite transition-colors shrink-0"
             title={collapsed ? 'Expandir barra' : 'Contraer barra'}
             aria-label="Alternar barra lateral"
           >
@@ -102,7 +102,7 @@ export function AppShell({
           <button
             type="button"
             onClick={() => setMobileMenuOpen(false)}
-            className="p-1.5 rounded-md text-[#8D90A0] hover:text-white"
+            className="p-1.5 rounded-inputs text-fog hover:text-paper"
             aria-label="Cerrar menú"
           >
             <X className="w-4 h-4" />
@@ -119,10 +119,10 @@ export function AppShell({
               onNavigate('dashboard');
               if (isMobile) setMobileMenuOpen(false);
             }}
-            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors whitespace-nowrap ${
+            className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-inputs text-[13px] font-medium transition-colors whitespace-nowrap ${
               route === 'dashboard'
-                ? 'bg-[#2563EB]/15 text-white border border-[#3B82F6]/30'
-                : 'text-[#C3C6D7] hover:text-white hover:bg-[#1E293B]/70'
+                ? 'bg-iris-violet/15 text-paper border border-iris-violet/30 shadow-subtle'
+                : 'text-mist hover:text-paper hover:bg-graphite/50'
             }`}
           >
             <LayoutGrid className="w-4 h-4 shrink-0" />
@@ -134,7 +134,7 @@ export function AppShell({
           <div className="space-y-1.5">
             {(!collapsed || isMobile) && (
               <div className="px-3 pb-1">
-                <p className="text-[11px] font-medium text-[#8D90A0] truncate">
+                <p className="text-[11px] font-medium text-fog truncate">
                   {currentProject.name}
                 </p>
               </div>
@@ -151,10 +151,10 @@ export function AppShell({
                     if (isMobile) setMobileMenuOpen(false);
                   }}
                   title={collapsed && !isMobile ? item.label : undefined}
-                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors whitespace-nowrap ${
+                  className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-inputs text-[13px] font-medium transition-colors whitespace-nowrap ${
                     active
-                      ? 'bg-[#2563EB]/15 text-white border border-[#3B82F6]/30'
-                      : 'text-[#C3C6D7] hover:text-white hover:bg-[#1E293B]/70'
+                      ? 'bg-iris-violet/15 text-paper border border-iris-violet/30 shadow-subtle'
+                      : 'text-mist hover:text-paper hover:bg-graphite/50'
                   }`}
                 >
                   <Icon className="w-4 h-4 shrink-0" />
@@ -166,8 +166,8 @@ export function AppShell({
         )}
 
         {(!collapsed || isMobile) && projects.length > 0 && (
-          <div className="space-y-1 pt-2 border-t border-[#1E293B]">
-            <p className="px-3 py-1 text-[11px] font-medium text-[#8D90A0]">Espacios de trabajo</p>
+          <div className="space-y-1 pt-2 border-t border-graphite">
+            <p className="px-3 py-1 text-[11px] font-medium text-fog">Espacios de trabajo</p>
             {projects.map((p) => {
               const isSelected = currentProject?.id === p.id && route !== 'dashboard';
               return (
@@ -178,14 +178,14 @@ export function AppShell({
                     onNavigate(route === 'dashboard' ? 'kanban' : route, p.id);
                     if (isMobile) setMobileMenuOpen(false);
                   }}
-                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-lg text-[12px] transition-colors ${
+                  className={`w-full flex items-center justify-between px-3 py-1.5 rounded-inputs text-[12px] transition-colors ${
                     isSelected
-                      ? 'text-white bg-[#171F33]'
-                      : 'text-[#8D90A0] hover:text-[#DAE2FD] hover:bg-[#171F33]/60'
+                      ? 'text-paper bg-obsidian border border-graphite'
+                      : 'text-fog hover:text-mist hover:bg-obsidian/60'
                   }`}
                 >
                   <span className="truncate">{p.name}</span>
-                  <span className="font-mono text-[10px] text-[#64748B] ml-2 shrink-0">
+                  <span className="font-mono text-[10px] text-ash ml-2 shrink-0">
                     {p.code}
                   </span>
                 </button>
@@ -197,14 +197,14 @@ export function AppShell({
 
       {/* User profile footer */}
       {user && (
-        <div className="p-3 border-t border-[#1E293B] shrink-0">
+        <div className="p-3 border-t border-graphite shrink-0">
           <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2.5 min-w-0">
               <UserAvatar name={user.fullName} size="md" />
               {(!collapsed || isMobile) && (
                 <div className="min-w-0">
-                  <p className="text-[13px] font-medium text-white truncate">{user.fullName}</p>
-                  <p className="text-[11px] text-[#8D90A0] truncate">
+                  <p className="text-[13px] font-medium text-bone truncate">{user.fullName}</p>
+                  <p className="text-[11px] text-fog truncate">
                     {currentProject
                       ? formatRoleLabel(currentProject.myRole)
                       : user.globalRole === 'ADMIN'
@@ -219,7 +219,7 @@ export function AppShell({
               onClick={logout}
               title="Cerrar sesión"
               aria-label="Cerrar sesión"
-              className="p-1.5 rounded-md text-[#8D90A0] hover:text-[#F43F5E] hover:bg-[#1E293B] transition-colors shrink-0"
+              className="p-1.5 rounded-inputs text-fog hover:text-coral-red hover:bg-graphite transition-colors shrink-0"
             >
               <LogOut className="w-4 h-4" />
             </button>
@@ -230,7 +230,7 @@ export function AppShell({
   );
 
   return (
-    <div className="min-h-screen bg-[#0B0F17] text-[#DAE2FD] flex">
+    <div className="min-h-screen bg-void text-mist flex">
       {/* Desktop Sidebar */}
       <aside
         className={`hidden md:block shrink-0 transition-[width] duration-150 ${
@@ -244,10 +244,10 @@ export function AppShell({
       {mobileMenuOpen && (
         <div className="fixed inset-0 z-40 md:hidden flex">
           <div
-            className="fixed inset-0 bg-black/60"
+            className="fixed inset-0 bg-void/80 backdrop-blur-sm"
             onClick={() => setMobileMenuOpen(false)}
           />
-          <div className="relative w-64 max-w-[80vw] h-full z-10">
+          <div className="relative w-64 max-w-[80vw] h-full z-10 shadow-xl">
             {renderSidebarContent(true)}
           </div>
         </div>
@@ -255,13 +255,13 @@ export function AppShell({
 
       {/* Main Content Shell */}
       <div className="flex-1 flex flex-col min-w-0">
-        {/* Top Bar (Clean 3-Zone Contract: Breadcrumb | Search/Notifications | Primary CTA) */}
-        <header className="sticky top-0 z-30 h-14 bg-[#0B0F17]/95 backdrop-blur border-b border-[#1E293B] px-4 sm:px-6 flex items-center justify-between gap-4">
+        {/* Top Bar */}
+        <header className="sticky top-0 z-30 h-14 bg-void/90 backdrop-blur border-b border-graphite px-4 sm:px-6 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden p-1.5 rounded-md text-[#C3C6D7] hover:text-white hover:bg-[#1E293B]"
+              className="md:hidden p-1.5 rounded-inputs text-mist hover:text-paper hover:bg-graphite"
               aria-label="Abrir navegación"
             >
               <Menu className="w-5 h-5" />
@@ -271,22 +271,22 @@ export function AppShell({
               <button
                 type="button"
                 onClick={() => onNavigate('dashboard')}
-                className="text-[#8D90A0] hover:text-white transition-colors whitespace-nowrap"
+                className="text-fog hover:text-paper transition-colors whitespace-nowrap"
               >
                 Proyectos
               </button>
               {currentProject && route !== 'dashboard' && (
                 <>
-                  <ChevronRight className="w-3.5 h-3.5 text-[#475569] shrink-0" />
+                  <ChevronRight className="w-3.5 h-3.5 text-ash shrink-0" />
                   <button
                     type="button"
                     onClick={() => onNavigate('backlog', currentProject.id)}
-                    className="text-[#C3C6D7] hover:text-white transition-colors truncate max-w-[140px] sm:max-w-[220px]"
+                    className="text-mist hover:text-paper transition-colors truncate max-w-[140px] sm:max-w-[220px]"
                   >
                     {currentProject.name}
                   </button>
-                  <ChevronRight className="w-3.5 h-3.5 text-[#475569] shrink-0" />
-                  <span className="font-medium text-white whitespace-nowrap truncate">
+                  <ChevronRight className="w-3.5 h-3.5 text-ash shrink-0" />
+                  <span className="font-medium text-bone whitespace-nowrap truncate">
                     {routeLabelMap[route]}
                   </span>
                 </>
@@ -298,11 +298,11 @@ export function AppShell({
             <button
               type="button"
               onClick={onOpenCommandPalette}
-              className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#0F172A] border border-[#2D3449] hover:border-[#434655] text-[12px] text-[#8D90A0] hover:text-white transition-colors whitespace-nowrap shrink-0"
+              className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-inputs bg-carbon border border-graphite hover:border-smoke text-[12px] text-fog hover:text-mist transition-colors whitespace-nowrap shrink-0 shadow-subtle"
             >
               <Search className="w-3.5 h-3.5" />
               <span>Buscar o navegar</span>
-              <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-[#1E293B] text-[#C3C6D7]">
+              <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded-sm bg-graphite text-mist">
                 ⌘K
               </kbd>
             </button>
@@ -312,12 +312,12 @@ export function AppShell({
               <button
                 type="button"
                 onClick={() => setNotifOpen((o) => !o)}
-                className="relative p-2 rounded-lg bg-[#0F172A] border border-[#2D3449] hover:border-[#434655] text-[#C3C6D7] hover:text-white transition-colors"
+                className="relative p-2 rounded-inputs bg-carbon border border-graphite hover:border-smoke text-mist hover:text-paper transition-colors shadow-subtle"
                 aria-label="Notificaciones"
               >
                 <Bell className="w-4 h-4" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-[#2563EB] text-white font-mono text-[10px] font-semibold flex items-center justify-center">
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-pills bg-iris-violet text-paper font-mono text-[10px] font-semibold flex items-center justify-center shadow-sm">
                     {unreadCount}
                   </span>
                 )}
@@ -329,25 +329,25 @@ export function AppShell({
                     className="fixed inset-0 z-40"
                     onClick={() => setNotifOpen(false)}
                   />
-                  <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-xl bg-[#171F33] border border-[#334155] shadow-2xl z-50 overflow-hidden">
-                    <div className="px-4 py-3 border-b border-[#2D3449] flex items-center justify-between">
-                      <span className="text-[13px] font-semibold text-white">
+                  <div className="absolute right-0 mt-2 w-80 sm:w-96 rounded-cards bg-obsidian border border-graphite shadow-xl z-50 overflow-hidden">
+                    <div className="px-4 py-3 border-b border-graphite flex items-center justify-between">
+                      <span className="text-[13px] font-semibold text-bone">
                         Notificaciones ({unreadCount} sin leer)
                       </span>
                       {unreadCount > 0 && (
                         <button
                           type="button"
                           onClick={() => onMarkNotificationsRead()}
-                          className="inline-flex items-center gap-1 text-[11px] text-[#B4C5FF] hover:text-white"
+                          className="inline-flex items-center gap-1 text-[11px] text-signal-teal hover:text-paper"
                         >
                           <CheckCheck className="w-3.5 h-3.5" />
                           Marcar leídas
                         </button>
                       )}
                     </div>
-                    <div className="max-h-80 overflow-y-auto divide-y divide-[#222A3D]">
+                    <div className="max-h-80 overflow-y-auto divide-y divide-graphite">
                       {notifications.length === 0 ? (
-                        <p className="px-4 py-8 text-center text-[12px] text-[#8D90A0]">
+                        <p className="px-4 py-8 text-center text-[12px] text-fog">
                           No tienes notificaciones pendientes.
                         </p>
                       ) : (
@@ -356,12 +356,12 @@ export function AppShell({
                             key={n.id}
                             type="button"
                             onClick={() => onMarkNotificationsRead(n.id)}
-                            className={`w-full text-left px-4 py-3 hover:bg-[#222A3D]/60 transition-colors ${
-                              n.readStatus ? 'opacity-60' : 'bg-[#2563EB]/5'
+                            className={`w-full text-left px-4 py-3 hover:bg-graphite/40 transition-colors ${
+                              n.readStatus ? 'opacity-60' : 'bg-iris-violet/5'
                             }`}
                           >
-                            <p className="text-[12px] text-[#DAE2FD] leading-5">{n.message}</p>
-                            <p className="mt-1 font-mono text-[10px] text-[#8D90A0]">
+                            <p className="text-[12px] text-mist leading-5">{n.message}</p>
+                            <p className="mt-1 font-mono text-[10px] text-fog">
                               {new Date(n.createdAt).toLocaleString('es-ES', {
                                 day: '2-digit',
                                 month: 'short',

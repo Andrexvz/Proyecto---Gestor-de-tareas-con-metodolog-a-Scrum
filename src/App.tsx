@@ -233,7 +233,7 @@ function WorkspaceApp() {
           setEditingStory(null);
           setStoryModalOpen(true);
         }}
-        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg bg-[#2563EB] hover:bg-[#1D4ED8] text-[12px] font-medium text-white transition-colors whitespace-nowrap"
+        className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-buttons bg-iris-violet hover:bg-iris-violet/90 text-[12px] font-medium text-paper transition-colors whitespace-nowrap shadow-sm"
       >
         <Plus className="w-3.5 h-3.5" />
         Nueva historia

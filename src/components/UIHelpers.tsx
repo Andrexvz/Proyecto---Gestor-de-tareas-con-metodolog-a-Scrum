@@ -18,23 +18,23 @@ export function formatRoleLabel(role: ScrumRole | 'ADMIN'): string {
 export function PrioritySignal({ priority }: { priority: StoryPriority }) {
   if (priority === 'HIGH') {
     return (
-      <span className="inline-flex items-center gap-1 text-[12px] font-medium text-[#FDA4AF] whitespace-nowrap">
-        <ArrowUp className="w-3.5 h-3.5 text-[#F43F5E]" />
+      <span className="inline-flex items-center gap-1 text-[12px] font-medium text-coral-red whitespace-nowrap bg-coral-red/10 border border-coral-red/20 px-1.5 py-0.5 rounded-pills">
+        <ArrowUp className="w-3.5 h-3.5 text-coral-red" />
         Alta
       </span>
     );
   }
   if (priority === 'MEDIUM') {
     return (
-      <span className="inline-flex items-center gap-1 text-[12px] font-medium text-[#FCD34D] whitespace-nowrap">
-        <Equal className="w-3.5 h-3.5 text-[#F59E0B]" />
+      <span className="inline-flex items-center gap-1 text-[12px] font-medium text-acid-lime whitespace-nowrap bg-acid-lime/10 border border-acid-lime/20 px-1.5 py-0.5 rounded-pills">
+        <Equal className="w-3.5 h-3.5 text-acid-lime" />
         Media
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-[12px] font-medium text-[#6EE7B7] whitespace-nowrap">
-      <ArrowDown className="w-3.5 h-3.5 text-[#10B981]" />
+    <span className="inline-flex items-center gap-1 text-[12px] font-medium text-pulse-green whitespace-nowrap bg-pulse-green/10 border border-pulse-green/20 px-1.5 py-0.5 rounded-pills">
+      <ArrowDown className="w-3.5 h-3.5 text-pulse-green" />
       Baja
     </span>
   );
@@ -43,7 +43,7 @@ export function PrioritySignal({ priority }: { priority: StoryPriority }) {
 export function SprintStatusText({ status }: { status: SprintStatus }) {
   if (status === 'ACTIVE') {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[#4EDEA3] whitespace-nowrap">
+      <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-pulse-green whitespace-nowrap bg-pulse-green/10 px-2 py-0.5 rounded-pills border border-pulse-green/20">
         <PlayCircle className="w-3.5 h-3.5" />
         Activo
       </span>
@@ -51,14 +51,14 @@ export function SprintStatusText({ status }: { status: SprintStatus }) {
   }
   if (status === 'PLANNING') {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[#B4C5FF] whitespace-nowrap">
+      <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-signal-teal whitespace-nowrap bg-signal-teal/10 px-2 py-0.5 rounded-pills border border-signal-teal/20">
         <Clock className="w-3.5 h-3.5" />
         Planificación
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-[#8D90A0] whitespace-nowrap">
+    <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-fog whitespace-nowrap bg-graphite/40 px-2 py-0.5 rounded-pills border border-graphite">
       <Archive className="w-3.5 h-3.5" />
       Cerrado
     </span>
@@ -87,10 +87,10 @@ export function UserAvatar({ name, size = 'sm' }: { name: string; size?: 'xs' | 
     .toUpperCase();
 
   const colors = [
-    'bg-[#2563EB]/25 text-[#B4C5FF] border-[#3B82F6]/30',
-    'bg-[#7C3AED]/25 text-[#D2BBFF] border-[#8B5CF6]/30',
-    'bg-[#059669]/25 text-[#6EE7B7] border-[#10B981]/30',
-    'bg-[#D97706]/25 text-[#FCD34D] border-[#F59E0B]/30',
+    'bg-iris-violet/20 text-iris-violet border-iris-violet/30',
+    'bg-lavender/20 text-lavender border-lavender/30',
+    'bg-signal-teal/20 text-signal-teal border-signal-teal/30',
+    'bg-pulse-green/20 text-pulse-green border-pulse-green/30',
   ];
   const colorIdx = name.split('').reduce((acc, ch) => acc + ch.charCodeAt(0), 0) % colors.length;
 
@@ -134,12 +134,12 @@ export function ConfirmDialog({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px] p-4">
-      <div className="w-full max-w-md rounded-xl bg-[#171F33] border border-[#334155] p-6 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-void/80 backdrop-blur-sm p-4 animate-in fade-in duration-150">
+      <div className="w-full max-w-md rounded-cards bg-obsidian border border-graphite p-6 shadow-xl space-y-4">
         <div className="flex items-start gap-3">
           <div
-            className={`p-2 rounded-lg shrink-0 ${
-              variant === 'danger' ? 'bg-[#F43F5E]/15 text-[#F43F5E]' : 'bg-[#2563EB]/15 text-[#3B82F6]'
+            className={`p-2 rounded-inputs shrink-0 ${
+              variant === 'danger' ? 'bg-coral-red/15 text-coral-red' : 'bg-iris-violet/15 text-iris-violet'
             }`}
           >
             {variant === 'danger' ? (
@@ -149,8 +149,8 @@ export function ConfirmDialog({
             )}
           </div>
           <div className="flex-1">
-            <h3 className="text-[16px] font-semibold text-[#F8FAFC] leading-6">{title}</h3>
-            <p className="mt-1.5 text-[13px] text-[#C3C6D7] leading-5">{description}</p>
+            <h3 className="text-[16px] font-semibold text-bone leading-6">{title}</h3>
+            <p className="mt-1.5 text-[13px] text-mist leading-5">{description}</p>
           </div>
         </div>
         <div className="mt-6 flex items-center justify-end gap-2.5">
@@ -158,7 +158,7 @@ export function ConfirmDialog({
             type="button"
             onClick={onCancel}
             disabled={loading}
-            className="px-4 py-2 text-[13px] font-medium text-[#C3C6D7] hover:text-white hover:bg-[#222A3D] rounded-lg transition-colors whitespace-nowrap"
+            className="px-4 py-2 text-[13px] font-medium text-mist hover:text-paper hover:bg-graphite rounded-buttons transition-colors whitespace-nowrap"
           >
             {cancelLabel}
           </button>
@@ -166,10 +166,10 @@ export function ConfirmDialog({
             type="button"
             onClick={onConfirm}
             disabled={loading}
-            className={`px-4 py-2 text-[13px] font-medium text-white rounded-lg transition-colors whitespace-nowrap disabled:opacity-60 ${
+            className={`px-4 py-2 text-[13px] font-medium text-paper rounded-buttons transition-colors whitespace-nowrap disabled:opacity-60 shadow-sm ${
               variant === 'danger'
-                ? 'bg-[#DC2626] hover:bg-[#B91C1C]'
-                : 'bg-[#2563EB] hover:bg-[#1D4ED8]'
+                ? 'bg-coral-red hover:bg-coral-red/90'
+                : 'bg-iris-violet hover:bg-iris-violet/90'
             }`}
           >
             {loading ? 'Procesando...' : confirmLabel}
