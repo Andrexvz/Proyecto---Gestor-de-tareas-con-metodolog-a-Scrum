@@ -563,16 +563,36 @@ class ScrumStore {
       // Ignorar fallo al respaldar
     }
 
-    // Atomic write pattern: write to isolated temp file then atomically rename
+    // Atomic write pattern: write to isolated temp file then atomically rename with Windows lock retry
     const tmpPath = `${DB_PATH}.${Date.now()}.${Math.random().toString(36).slice(2, 6)}.tmp`;
     fs.writeFileSync(tmpPath, data, 'utf-8');
-    try {
-      fs.renameSync(tmpPath, DB_PATH);
-    } catch {
-      // Fallback in case of Windows file-lock contention
-      fs.copyFileSync(tmpPath, DB_PATH);
+    let written = false;
+    for (let attempt = 0; attempt < 5; attempt++) {
       try {
-        fs.unlinkSync(tmpPath);
+        fs.renameSync(tmpPath, DB_PATH);
+        written = true;
+        break;
+      } catch {
+        try {
+          fs.copyFileSync(tmpPath, DB_PATH);
+          try {
+            fs.unlinkSync(tmpPath);
+          } catch {}
+          written = true;
+          break;
+        } catch {
+          // Brief wait for OneDrive lock to release
+          const waitUntil = Date.now() + 25;
+          while (Date.now() < waitUntil) {}
+        }
+      }
+    }
+    if (!written) {
+      try {
+        fs.writeFileSync(DB_PATH, data, 'utf-8');
+        try {
+          fs.unlinkSync(tmpPath);
+        } catch {}
       } catch {}
     }
   }
