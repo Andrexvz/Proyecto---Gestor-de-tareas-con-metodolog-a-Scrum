@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertCircle, ArrowUp, Equal, ArrowDown, CheckCircle2, Clock, PlayCircle, Archive } from 'lucide-react';
+import { Badge, Button, Modal } from './ui';
 import type { ScrumRole, SprintStatus, StoryPriority, TaskStatus } from '../types/scrum';
 
 export function formatRoleLabel(role: ScrumRole | 'ADMIN'): string {
@@ -18,50 +19,74 @@ export function formatRoleLabel(role: ScrumRole | 'ADMIN'): string {
 export function PrioritySignal({ priority }: { priority: StoryPriority }) {
   if (priority === 'HIGH') {
     return (
-      <span className="inline-flex items-center gap-1 text-[12px] font-medium text-coral-red whitespace-nowrap bg-coral-red/10 border border-coral-red/20 px-1.5 py-0.5 rounded-pills">
-        <ArrowUp className="w-3.5 h-3.5 text-coral-red" />
+      <Badge
+        variant="danger"
+        shape="pill"
+        size="sm"
+        icon={<ArrowUp className="w-3.5 h-3.5 text-coral-red" />}
+      >
         Alta
-      </span>
+      </Badge>
     );
   }
   if (priority === 'MEDIUM') {
     return (
-      <span className="inline-flex items-center gap-1 text-[12px] font-medium text-acid-lime whitespace-nowrap bg-acid-lime/10 border border-acid-lime/20 px-1.5 py-0.5 rounded-pills">
-        <Equal className="w-3.5 h-3.5 text-acid-lime" />
+      <Badge
+        variant="warning"
+        shape="pill"
+        size="sm"
+        icon={<Equal className="w-3.5 h-3.5 text-acid-lime" />}
+      >
         Media
-      </span>
+      </Badge>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1 text-[12px] font-medium text-pulse-green whitespace-nowrap bg-pulse-green/10 border border-pulse-green/20 px-1.5 py-0.5 rounded-pills">
-      <ArrowDown className="w-3.5 h-3.5 text-pulse-green" />
+    <Badge
+      variant="success"
+      shape="pill"
+      size="sm"
+      icon={<ArrowDown className="w-3.5 h-3.5 text-pulse-green" />}
+    >
       Baja
-    </span>
+    </Badge>
   );
 }
 
 export function SprintStatusText({ status }: { status: SprintStatus }) {
   if (status === 'ACTIVE') {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-pulse-green whitespace-nowrap bg-pulse-green/10 px-2 py-0.5 rounded-pills border border-pulse-green/20">
-        <PlayCircle className="w-3.5 h-3.5" />
+      <Badge
+        variant="success"
+        shape="pill"
+        size="sm"
+        icon={<PlayCircle className="w-3.5 h-3.5" />}
+      >
         Activo
-      </span>
+      </Badge>
     );
   }
   if (status === 'PLANNING') {
     return (
-      <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-signal-teal whitespace-nowrap bg-signal-teal/10 px-2 py-0.5 rounded-pills border border-signal-teal/20">
-        <Clock className="w-3.5 h-3.5" />
+      <Badge
+        variant="info"
+        shape="pill"
+        size="sm"
+        icon={<Clock className="w-3.5 h-3.5" />}
+      >
         Planificación
-      </span>
+      </Badge>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1.5 text-[12px] font-medium text-fog whitespace-nowrap bg-graphite/40 px-2 py-0.5 rounded-pills border border-graphite">
-      <Archive className="w-3.5 h-3.5" />
+    <Badge
+      variant="default"
+      shape="pill"
+      size="sm"
+      icon={<Archive className="w-3.5 h-3.5" />}
+    >
       Cerrado
-    </span>
+    </Badge>
   );
 }
 
@@ -131,51 +156,51 @@ export function ConfirmDialog({
   onConfirm: () => void;
   onCancel: () => void;
 }) {
-  if (!open) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-void/80 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-      <div className="w-full max-w-md rounded-cards bg-obsidian border border-graphite p-6 shadow-xl space-y-4">
-        <div className="flex items-start gap-3">
-          <div
-            className={`p-2 rounded-inputs shrink-0 ${
-              variant === 'danger' ? 'bg-coral-red/15 text-coral-red' : 'bg-iris-violet/15 text-iris-violet'
-            }`}
-          >
-            {variant === 'danger' ? (
-              <AlertCircle className="w-5 h-5" />
-            ) : (
-              <CheckCircle2 className="w-5 h-5" />
-            )}
-          </div>
-          <div className="flex-1">
-            <h3 className="text-[16px] font-semibold text-bone leading-6">{title}</h3>
-            <p className="mt-1.5 text-[13px] text-mist leading-5">{description}</p>
-          </div>
-        </div>
-        <div className="mt-6 flex items-center justify-end gap-2.5">
-          <button
-            type="button"
+    <Modal
+      open={open}
+      onClose={onCancel}
+      size="sm"
+      showCloseButton={false}
+      footer={
+        <div className="flex items-center justify-end gap-2.5 w-full">
+          <Button
+            variant="outline"
+            size="md"
             onClick={onCancel}
             disabled={loading}
-            className="px-4 py-2 text-[13px] font-medium text-mist hover:text-paper hover:bg-graphite rounded-buttons transition-colors whitespace-nowrap"
           >
             {cancelLabel}
-          </button>
-          <button
-            type="button"
+          </Button>
+          <Button
+            variant={variant === 'danger' ? 'danger' : 'primary'}
+            size="md"
             onClick={onConfirm}
-            disabled={loading}
-            className={`px-4 py-2 text-[13px] font-medium text-paper rounded-buttons transition-colors whitespace-nowrap disabled:opacity-60 shadow-sm ${
-              variant === 'danger'
-                ? 'bg-coral-red hover:bg-coral-red/90'
-                : 'bg-iris-violet hover:bg-iris-violet/90'
-            }`}
+            loading={loading}
           >
-            {loading ? 'Procesando...' : confirmLabel}
-          </button>
+            {confirmLabel}
+          </Button>
+        </div>
+      }
+    >
+      <div className="flex items-start gap-3">
+        <div
+          className={`p-2 rounded-inputs shrink-0 ${
+            variant === 'danger' ? 'bg-coral-red/15 text-coral-red' : 'bg-iris-violet/15 text-iris-violet'
+          }`}
+          aria-hidden="true"
+        >
+          {variant === 'danger' ? (
+            <AlertCircle className="w-5 h-5" />
+          ) : (
+            <CheckCircle2 className="w-5 h-5" />
+          )}
+        </div>
+        <div className="flex-1 space-y-1">
+          <h3 className="text-[15px] font-semibold text-bone leading-6">{title}</h3>
+          <p className="text-[13px] text-mist leading-5">{description}</p>
         </div>
       </div>
-    </div>
+    </Modal>
   );
 }
