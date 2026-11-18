@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 
 const EDGE_PATH = 'C:\\Program Files (x86)\\Microsoft\\Edge\\Application\\msedge.exe';
-const TEMP_PROFILE = 'C:\\Users\\julia\\AppData\\Local\\Temp\\edge_verify_cdp';
+const TEMP_PROFILE = 'C:\\Users\\julia\\AppData\\Local\\Temp\\edge_verify_cdp_stage5';
 const ARTIFACT_DIR = 'C:\\Users\\julia\\.gemini\\antigravity\\brain\\99369301-a9ca-420f-9686-d60746cf25b1';
 
 async function sleep(ms) {
@@ -11,11 +11,18 @@ async function sleep(ms) {
 }
 
 async function run() {
-  console.log('--- 1. Detectando ejecutable de navegador ---');
+  console.log('--- 1. Detectando ejecutable de Microsoft Edge ---');
   if (!fs.existsSync(EDGE_PATH)) {
     throw new Error(`Microsoft Edge no se encontró en ${EDGE_PATH}`);
   }
   console.log(`✓ Microsoft Edge detectado en: ${EDGE_PATH}`);
+
+  // Ensure clean temp profile dir
+  try {
+    if (fs.existsSync(TEMP_PROFILE)) {
+      fs.rmSync(TEMP_PROFILE, { recursive: true, force: true });
+    }
+  } catch {}
 
   console.log('--- 2. Iniciando Microsoft Edge en modo Headless con CDP (puerto 9222) ---');
   const edgeProc = spawn(EDGE_PATH, [
@@ -35,7 +42,7 @@ async function run() {
     // Wait for CDP to respond
     let attempts = 0;
     let version = null;
-    while (attempts < 12) {
+    while (attempts < 15) {
       await sleep(500);
       try {
         const res = await fetch('http://localhost:9222/json/version');
@@ -102,33 +109,91 @@ async function run() {
     await sendCDP('Runtime.enable');
     await sendCDP('DOM.enable');
 
-    console.log('--- 3. Navegando a http://localhost:3000 ---');
+    console.log('--- 3. Navegando a http://localhost:3000 (Página de Login) ---');
     await sendCDP('Page.navigate', { url: 'http://localhost:3000' });
+    await sleep(1500);
+
+    // Clear session to ensure we are at LoginView
+    await sendCDP('Runtime.evaluate', {
+      expression: `
+        (() => {
+          localStorage.clear();
+          sessionStorage.clear();
+          window.location.reload();
+        })()
+      `,
+    });
     await sleep(2000);
 
-    // Check login form and log in with admin@velocity.dev
-    const loginResult = await sendCDP('Runtime.evaluate', {
+    // Verify Login Screen Layout & Elements
+    const loginInspect = await sendCDP('Runtime.evaluate', {
+      expression: `
+        (() => {
+          const heading = document.querySelector('h1')?.textContent || '';
+          const subtitle = document.body.innerHTML.includes('Scrum Management Suite');
+          const emailInput = document.getElementById('login-email');
+          const passInput = document.getElementById('login-password');
+          const quickButtons = Array.from(document.querySelectorAll('button')).filter(b => 
+            b.textContent.includes('Administrador') || 
+            b.textContent.includes('Scrum Master') || 
+            b.textContent.includes('Product Owner') || 
+            b.textContent.includes('Developer')
+          );
+          const hasEyeToggle = !!document.querySelector('button[aria-label*="contraseña"]');
+          return {
+            heading,
+            hasSubtitle: subtitle,
+            emailPlaceholder: emailInput?.getAttribute('placeholder') || '',
+            passPlaceholder: passInput?.getAttribute('placeholder') || '',
+            hasEyeToggle,
+            quickRolesCount: quickButtons.length
+          };
+        })()
+      `,
+      returnByValue: true,
+    });
+    console.log('✓ Inspección de LoginView (Etapa 5):', loginInspect.result?.value);
+
+    // Capture desktop Login screenshot
+    const loginScreenshot = await sendCDP('Page.captureScreenshot', { format: 'png' });
+    const loginImgPath = path.join(ARTIFACT_DIR, 'login-desktop-edge.png');
+    fs.writeFileSync(loginImgPath, Buffer.from(loginScreenshot.data, 'base64'));
+    console.log(`✓ Captura visual de Login guardada en: ${loginImgPath}`);
+
+    // Test Show/Hide password toggle
+    console.log('--- 4. Probando alternancia de visibilidad de contraseña (Eye/EyeOff) ---');
+    const toggleResult = await sendCDP('Runtime.evaluate', {
       expression: `
         (async () => {
-          const emailInput = document.querySelector('input[type="email"]');
-          const passInput = document.querySelector('input[type="password"]');
-          if (!emailInput || !passInput) return { ok: false, reason: 'Inputs no encontrados' };
-          
-          emailInput.value = 'admin@velocity.dev';
-          emailInput.dispatchEvent(new Event('input', { bubbles: true }));
-          passInput.value = 'Password123!';
-          passInput.dispatchEvent(new Event('input', { bubbles: true }));
-          
-          const submitBtn = document.querySelector('button[type="submit"]');
-          if (submitBtn) submitBtn.click();
-          return { ok: true };
+          const passInput = document.getElementById('login-password');
+          const toggleBtn = document.querySelector('button[aria-label*="contraseña"]');
+          const initialType = passInput?.getAttribute('type');
+          if (toggleBtn) toggleBtn.click();
+          await new Promise((r) => setTimeout(r, 120));
+          const toggledType = passInput?.getAttribute('type');
+          if (toggleBtn) toggleBtn.click();
+          await new Promise((r) => setTimeout(r, 120));
+          const restoredType = passInput?.getAttribute('type');
+          return { initialType, toggledType, restoredType };
         })()
       `,
       awaitPromise: true,
       returnByValue: true,
     });
+    console.log('✓ Resultado del toggle de contraseña:', toggleResult.result?.value);
 
-    console.log('✓ Credenciales de autenticación enviadas:', loginResult.result?.value);
+    // Perform login using quick role button (Scrum Master)
+    console.log('--- 5. Autenticación mediante perfil de evaluación rápida (Scrum Master) ---');
+    await sendCDP('Runtime.evaluate', {
+      expression: `
+        (() => {
+          const smButton = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Scrum Master'));
+          if (smButton) {
+            smButton.click();
+          }
+        })()
+      `,
+    });
     await sleep(2500);
 
     // Verify current route
@@ -138,102 +203,156 @@ async function run() {
     });
     console.log(`✓ Ruta actual tras autenticación: ${currentLoc.result?.value}`);
 
-    // Verify Dashboard
-    console.log('--- 4. Comprobando Dashboard y Estadísticas ---');
-    const dashboardCheck = await sendCDP('Runtime.evaluate', {
-      expression: `
-        (() => {
-          const title = document.querySelector('h1')?.textContent || '';
-          const cards = document.querySelectorAll('.rounded-cards');
-          return {
-            title,
-            cardsCount: cards.length,
-            htmlLength: document.body.innerHTML.length
-          };
-        })()
-      `,
-      returnByValue: true,
-    });
-    console.log('✓ Estado del Dashboard:', dashboardCheck.result?.value);
-
-    // Navigate to Sprints view
-    console.log('--- 5. Comprobando Vista de Sprints (Etapa 4) ---');
+    // Verify Onboarding Modal
+    console.log('--- 6. Verificando Onboarding Interactivo de 8 Pasos (Etapa 5) ---');
+    // Ensure Onboarding is open (if not auto-opened, click help button)
     await sendCDP('Runtime.evaluate', {
       expression: `
         (() => {
-          window.history.pushState({}, '', '/projects/1/sprints');
-          window.dispatchEvent(new PopStateEvent('popstate'));
+          const modalTitle = document.getElementById('onboarding-modal-title');
+          if (!modalTitle) {
+            const helpBtn = document.querySelector('button[aria-label*="tutorial"]');
+            if (helpBtn) helpBtn.click();
+          }
         })()
       `,
     });
-    await sleep(1500);
+    await sleep(1000);
 
-    const sprintsCheck = await sendCDP('Runtime.evaluate', {
+    const onboardingInspect = await sendCDP('Runtime.evaluate', {
       expression: `
         (() => {
-          const title = document.querySelector('h1')?.textContent || '';
-          const hasBacklog = document.body.innerHTML.includes('Product Backlog');
-          const hasSprintsList = document.body.innerHTML.includes('Sprint');
-          const buttons = Array.from(document.querySelectorAll('button')).map(b => b.textContent.trim());
+          const modalTitle = document.getElementById('onboarding-modal-title');
+          const stepText = document.body.innerHTML.match(/Paso (\\d+) de (\\d+)/)?.[0] || '';
           return {
-            title,
-            hasBacklog,
-            hasSprintsList,
-            sampleButtons: buttons.slice(0, 8)
+            modalVisible: !!modalTitle,
+            titleText: modalTitle?.textContent || '',
+            stepText
           };
         })()
       `,
       returnByValue: true,
     });
-    console.log('✓ Verificación de SprintsView:', sprintsCheck.result?.value);
+    console.log('✓ Inspección de OnboardingModal:', onboardingInspect.result?.value);
 
-    // Capture desktop Sprints screenshot
-    const sprintsScreenshot = await sendCDP('Page.captureScreenshot', { format: 'png' });
-    const sprintsImgPath = path.join(ARTIFACT_DIR, 'sprints-desktop-edge.png');
-    fs.writeFileSync(sprintsImgPath, Buffer.from(sprintsScreenshot.data, 'base64'));
-    console.log(`✓ Captura visual de Sprints guardada en: ${sprintsImgPath}`);
+    // Capture desktop Onboarding screenshot
+    const onboardingScreenshot = await sendCDP('Page.captureScreenshot', { format: 'png' });
+    const onboardingImgPath = path.join(ARTIFACT_DIR, 'onboarding-desktop-edge.png');
+    fs.writeFileSync(onboardingImgPath, Buffer.from(onboardingScreenshot.data, 'base64'));
+    console.log(`✓ Captura visual de Onboarding guardada en: ${onboardingImgPath}`);
 
-    // Navigate to Metrics view
-    console.log('--- 6. Comprobando Vista de Métricas y Gráficos (Etapa 4) ---');
+    // Advance Onboarding step (Step 1 -> Step 2)
     await sendCDP('Runtime.evaluate', {
       expression: `
         (() => {
-          window.history.pushState({}, '', '/projects/1/metrics');
-          window.dispatchEvent(new PopStateEvent('popstate'));
+          const nextBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === 'Siguiente');
+          if (nextBtn) nextBtn.click();
         })()
       `,
     });
-    await sleep(1500);
+    await sleep(600);
 
-    const metricsCheck = await sendCDP('Runtime.evaluate', {
+    const step2Inspect = await sendCDP('Runtime.evaluate', {
       expression: `
         (() => {
-          const title = document.querySelector('h1')?.textContent || '';
-          const svgs = document.querySelectorAll('svg');
-          const hasVelocity = document.body.innerHTML.includes('Velocidad por Sprint');
-          const hasDonut = document.body.innerHTML.includes('Distribución de Tareas');
-          const hasLedger = document.body.innerHTML.includes('Historial Consolidado');
+          const modalTitle = document.getElementById('onboarding-modal-title');
+          const stepText = document.body.innerHTML.match(/Paso (\\d+) de (\\d+)/)?.[0] || '';
           return {
-            title,
-            svgCount: svgs.length,
-            hasVelocity,
-            hasDonut,
-            hasLedger
+            titleText: modalTitle?.textContent || '',
+            stepText
           };
         })()
       `,
       returnByValue: true,
     });
-    console.log('✓ Verificación de MetricsView:', metricsCheck.result?.value);
+    console.log('✓ Avance al paso 2 del Onboarding:', step2Inspect.result?.value);
 
-    // Capture desktop Metrics screenshot
-    const metricsScreenshot = await sendCDP('Page.captureScreenshot', { format: 'png' });
-    const metricsImgPath = path.join(ARTIFACT_DIR, 'metrics-desktop-edge.png');
-    fs.writeFileSync(metricsImgPath, Buffer.from(metricsScreenshot.data, 'base64'));
-    console.log(`✓ Captura visual de Métricas guardada en: ${metricsImgPath}`);
+    // Dismiss Onboarding
+    await sendCDP('Runtime.evaluate', {
+      expression: `
+        (() => {
+          const skipBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.trim() === 'Omitir tutorial');
+          if (skipBtn) skipBtn.click();
+        })()
+      `,
+    });
+    await sleep(600);
+
+    // Verify Theme Customization (ThemeModal & Light Mode)
+    console.log('--- 7. Verificando Modal de Temas y Modo Claro (Etapa 5) ---');
+    await sendCDP('Runtime.evaluate', {
+      expression: `
+        (() => {
+          const paletteBtn = document.querySelector('button[aria-label*="tema visual"]');
+          if (paletteBtn) paletteBtn.click();
+        })()
+      `,
+    });
+    await sleep(800);
+
+    // Select Light Mode
+    await sendCDP('Runtime.evaluate', {
+      expression: `
+        (() => {
+          const lightOption = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Modo Claro'));
+          if (lightOption) lightOption.click();
+        })()
+      `,
+    });
+    await sleep(600);
+
+    const checkLight = await sendCDP('Runtime.evaluate', {
+      expression: `document.documentElement.getAttribute('data-theme')`,
+      returnByValue: true,
+    });
+    console.log('✓ Atributo data-theme en Modo Claro:', checkLight.result?.value);
+
+    // Close Theme Modal
+    await sendCDP('Runtime.evaluate', {
+      expression: `
+        (() => {
+          const closeBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Guardar y cerrar'));
+          if (closeBtn) closeBtn.click();
+        })()
+      `,
+    });
+    await sleep(800);
+
+    // Capture Light Mode screenshot
+    const lightScreenshot = await sendCDP('Page.captureScreenshot', { format: 'png' });
+    const lightImgPath = path.join(ARTIFACT_DIR, 'theme-light-edge.png');
+    fs.writeFileSync(lightImgPath, Buffer.from(lightScreenshot.data, 'base64'));
+    console.log(`✓ Captura visual en Modo Claro guardada en: ${lightImgPath}`);
+
+    // Switch back to Dark Mode (default recommended identity)
+    await sendCDP('Runtime.evaluate', {
+      expression: `
+        (() => {
+          const paletteBtn = document.querySelector('button[aria-label*="tema visual"]');
+          if (paletteBtn) paletteBtn.click();
+        })()
+      `,
+    });
+    await sleep(600);
+    await sendCDP('Runtime.evaluate', {
+      expression: `
+        (() => {
+          const darkOption = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Modo Oscuro'));
+          if (darkOption) darkOption.click();
+          const closeBtn = Array.from(document.querySelectorAll('button')).find(b => b.textContent.includes('Guardar y cerrar'));
+          if (closeBtn) closeBtn.click();
+        })()
+      `,
+    });
+    await sleep(600);
+    const restoredTheme = await sendCDP('Runtime.evaluate', {
+      expression: `document.documentElement.getAttribute('data-theme')`,
+      returnByValue: true,
+    });
+    console.log(`✓ Tema restaurado a identidad predeterminada: ${restoredTheme.result?.value}`);
 
     // Check Mobile Viewport
-    console.log('--- 7. Comprobando Vista Responsive Móvil (Viewport 390x844) ---');
+    console.log('--- 8. Comprobando Vista Responsive Móvil (Viewport 390x844) ---');
     await sendCDP('Emulation.setDeviceMetricsOverride', {
       width: 390,
       height: 844,
@@ -243,11 +362,11 @@ async function run() {
     await sleep(1000);
 
     const mobileScreenshot = await sendCDP('Page.captureScreenshot', { format: 'png' });
-    const mobileImgPath = path.join(ARTIFACT_DIR, 'metrics-mobile-edge.png');
+    const mobileImgPath = path.join(ARTIFACT_DIR, 'dashboard-mobile-edge.png');
     fs.writeFileSync(mobileImgPath, Buffer.from(mobileScreenshot.data, 'base64'));
     console.log(`✓ Captura responsive móvil guardada en: ${mobileImgPath}`);
 
-    console.log('--- 8. Auditoría de Errores de Consola ---');
+    console.log('--- 9. Auditoría de Errores de Consola ---');
     console.log(`Errores de consola detectados: ${consoleErrors.length}`);
     if (consoleErrors.length > 0) {
       console.warn('Errores encontrados:', consoleErrors);

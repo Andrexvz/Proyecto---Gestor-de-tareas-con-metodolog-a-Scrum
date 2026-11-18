@@ -14,6 +14,8 @@ import {
   Menu,
   X,
   ChevronRight,
+  Palette,
+  HelpCircle,
 } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -30,6 +32,8 @@ interface AppShellProps {
   onNavigate: (route: ActiveRoute, projectId?: number) => void;
   onMarkNotificationsRead: (notificationId?: number) => void;
   onOpenCommandPalette: () => void;
+  onOpenOnboarding?: () => void;
+  onOpenThemeModal?: () => void;
   primaryAction?: React.ReactNode;
   children?: React.ReactNode;
 }
@@ -42,6 +46,8 @@ export function AppShell({
   onNavigate,
   onMarkNotificationsRead,
   onOpenCommandPalette,
+  onOpenOnboarding,
+  onOpenThemeModal,
   primaryAction,
   children,
 }: AppShellProps) {
@@ -428,6 +434,32 @@ export function AppShell({
                 {isMac ? '⌘K' : 'Ctrl K'}
               </kbd>
             </button>
+
+            {/* Theme Customization Button */}
+            {onOpenThemeModal && (
+              <button
+                type="button"
+                onClick={onOpenThemeModal}
+                className="p-2 rounded-inputs bg-carbon border border-graphite hover:border-smoke text-mist hover:text-paper transition-all shadow-subtle hover:bg-graphite/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-iris-violet/50"
+                title="Personalización y apariencia"
+                aria-label="Abrir personalización y tema visual"
+              >
+                <Palette className="w-4 h-4 text-lavender transition-transform hover:scale-105" />
+              </button>
+            )}
+
+            {/* Interactive Onboarding Guide Button */}
+            {onOpenOnboarding && (
+              <button
+                type="button"
+                onClick={onOpenOnboarding}
+                className="p-2 rounded-inputs bg-carbon border border-graphite hover:border-smoke text-mist hover:text-paper transition-all shadow-subtle hover:bg-graphite/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-iris-violet/50"
+                title="Guía interactiva Scrum (Onboarding)"
+                aria-label="Abrir tutorial interactivo de Scrum"
+              >
+                <HelpCircle className="w-4 h-4 text-signal-teal transition-transform hover:scale-105" />
+              </button>
+            )}
 
             {/* Notifications Popover */}
             <div className="relative">

@@ -3,6 +3,7 @@ import { Plus } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider, useToast } from './context/ToastContext';
+import { ThemeProvider } from './context/ThemeContext';
 import { apiFetch } from './lib/api';
 import { LoginView } from './components/LoginView';
 import { AppShell, type ActiveRoute } from './components/AppShell';
@@ -13,6 +14,8 @@ import { KanbanView } from './components/KanbanView';
 import { MetricsView } from './components/MetricsView';
 import { StoryModal } from './components/StoryModal';
 import { CommandPalette } from './components/CommandPalette';
+import { OnboardingModal } from './components/OnboardingModal';
+import { ThemeModal } from './components/ThemeModal';
 import { Button } from './components/ui';
 import type {
   AppNotification,
@@ -62,6 +65,24 @@ function WorkspaceApp() {
   const [storyModalOpen, setStoryModalOpen] = useState(false);
   const [editingStory, setEditingStory] = useState<UserStory | null>(null);
   const [commandOpen, setCommandOpen] = useState(false);
+
+  // Onboarding & Theme Modals
+  const [onboardingOpen, setOnboardingOpen] = useState(false);
+  const [themeModalOpen, setThemeModalOpen] = useState(false);
+
+  // Auto-launch onboarding on first login if not completed
+  useEffect(() => {
+    if (user?.id && !authLoading) {
+      try {
+        const completed = localStorage.getItem(`agile_velocity_onboarding_completed_${user.id}`);
+        if (!completed) {
+          setOnboardingOpen(true);
+        }
+      } catch {
+        // storage unavailable
+      }
+    }
+  }, [user?.id, authLoading]);
 
   const navigate = useCallback((nextRoute: ActiveRoute, projectId?: number) => {
     setRoute(nextRoute);
@@ -254,6 +275,8 @@ function WorkspaceApp() {
         onNavigate={(nextRoute, pid) => navigate(nextRoute, pid ?? selectedProjectId ?? undefined)}
         onMarkNotificationsRead={handleMarkNotificationsRead}
         onOpenCommandPalette={() => setCommandOpen(true)}
+        onOpenOnboarding={() => setOnboardingOpen(true)}
+        onOpenThemeModal={() => setThemeModalOpen(true)}
         primaryAction={primaryHeaderAction}
       >
         <AnimatePresence mode="wait">
@@ -345,16 +368,29 @@ function WorkspaceApp() {
             : undefined
         }
       />
+
+      <OnboardingModal
+        open={onboardingOpen}
+        user={user}
+        onClose={() => setOnboardingOpen(false)}
+      />
+
+      <ThemeModal
+        open={themeModalOpen}
+        onClose={() => setThemeModalOpen(false)}
+      />
     </>
   );
 }
 
 export default function App() {
   return (
-    <ToastProvider>
-      <AuthProvider>
-        <WorkspaceApp />
-      </AuthProvider>
-    </ToastProvider>
+    <ThemeProvider>
+      <ToastProvider>
+        <AuthProvider>
+          <WorkspaceApp />
+        </AuthProvider>
+      </ToastProvider>
+    </ThemeProvider>
   );
 }

@@ -312,3 +312,33 @@
 .text-\[\#3B82F6\] { color: var(--color-iris-violet) !important; }
 .bg-\[\#DC2626\] { background-color: var(--color-coral-red) !important; }
 .hover\:bg-\[\#B91C1C\]:hover { background-color: #dc2626 !important; }
+
+/* Light Mode Theme Overrides */
+[data-theme="light"] {
+  --color-void: #f8fafc;
+  --color-carbon: #ffffff;
+  --color-obsidian: #f1f5f9;
+  --color-graphite: #e2e8f0;
+  --color-smoke: #cbd5e1;
+  --color-ash: #94a3b8;
+  --color-fog: #64748b;
+  --color-mist: #334155;
+  --color-bone: #0f172a;
+  --color-paper: #020617;
+  color-scheme: light;
+}
+
+[data-theme="light"] select option {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+}
+
+/* Reduced Motion Enforcement */
+[data-reduced-motion="true"] *,
+[data-reduced-motion="true"] *::before,
+[data-reduced-motion="true"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
