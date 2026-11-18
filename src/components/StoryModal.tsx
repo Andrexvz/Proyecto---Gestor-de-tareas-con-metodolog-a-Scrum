@@ -1,8 +1,10 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Sparkles, Loader2, Plus, Trash2, X } from 'lucide-react';
+import { Sparkles, Loader2, Plus, Trash2, CheckCircle, AlertCircle } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
 import { apiFetch } from '../lib/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmDialog } from './UIHelpers';
+import { Modal, Input, Textarea, Button, Badge } from './ui';
 import type { AiGeneratedStory, StoryPriority, UserStory } from '../types/scrum';
 
 interface StoryModalProps {
@@ -23,10 +25,12 @@ export function StoryModal({
   onSaved,
 }: StoryModalProps) {
   const { showToast } = useToast();
+  const shouldReduceMotion = useReducedMotion();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [criteria, setCriteria] = useState<string[]>(['']);
+  const [newCriterionText, setNewCriterionText] = useState('');
   const [priority, setPriority] = useState<StoryPriority>('MEDIUM');
   const [storyPoints, setStoryPoints] = useState<string>('3');
 
@@ -41,6 +45,7 @@ export function StoryModal({
     setFieldErrors({});
     setAiHighlighted(false);
     setDiscardConfirmOpen(false);
+    setNewCriterionText('');
     if (editingStory) {
       setTitle(editingStory.title);
       setDescription(editingStory.description);
@@ -80,8 +85,6 @@ export function StoryModal({
     );
   }, [open, editingStory, title, description, criteria, priority, storyPoints]);
 
-  if (!open) return null;
-
   const attemptClose = () => {
     if (aiGenerating || saving) return;
     if (isDirty) {
@@ -96,7 +99,7 @@ export function StoryModal({
     if (seedText.length < 5) {
       setFieldErrors((prev) => ({
         ...prev,
-        ai: 'Ingresa al menos 5 caracteres para asistir a la IA',
+        ai: 'Ingresa al menos 5 caracteres en el título para asistir a la IA',
       }));
       return;
     }
@@ -105,7 +108,7 @@ export function StoryModal({
     setAiGenerating(true);
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 8000);
+    const timer = setTimeout(() => controller.abort(), 9000);
 
     try {
       const res = await apiFetch<{ draft: AiGeneratedStory }>('/api/v1/ai/generate-story', {
@@ -118,10 +121,10 @@ export function StoryModal({
       setDescription(`Como ${role}, quiero ${action}, para ${benefit}.`);
       setCriteria(acceptanceCriteria.length > 0 ? acceptanceCriteria : ['']);
       setAiHighlighted(true);
-      showToast('Borrador generado por Asistencia IA. Puedes editarlo antes de guardar.', 'info');
+      showToast('Borrador generado con Asistencia IA. Puedes afinarlo antes de guardar.', 'info');
     } catch {
       showToast(
-        'El asistente de IA no está disponible temporalmente. Puedes continuar escribiendo manualmente',
+        'El asistente de IA no está disponible temporalmente. Puedes continuar redactando manualmente.',
         'warning'
       );
     } finally {
@@ -130,13 +133,20 @@ export function StoryModal({
     }
   };
 
+  const handleAddCriterion = () => {
+    const text = newCriterionText.trim();
+    if (!text) return;
+    setCriteria((prev) => [...prev.filter(Boolean), text]);
+    setNewCriterionText('');
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const errs: { title?: string; points?: string } = {};
-    if (!title.trim()) errs.title = 'El título es obligatorio';
+    if (!title.trim()) errs.title = 'El título de la historia es obligatorio';
     const parsedPoints = Number(storyPoints);
     if (!Number.isInteger(parsedPoints) || parsedPoints < 0) {
-      errs.points = 'Mínimo 0 puntos (entero)';
+      errs.points = 'Debe ser un número entero mayor o igual a 0';
     }
     if (Object.keys(errs).length > 0) {
       setFieldErrors(errs);
@@ -163,7 +173,7 @@ export function StoryModal({
           body: JSON.stringify(payload),
         });
       }
-      showToast('Historia de usuario guardada correctamente', 'success');
+      showToast('Historia de usuario guardada con éxito', 'success');
       await onSaved();
       onClose();
     } catch (err: any) {
@@ -175,124 +185,111 @@ export function StoryModal({
 
   return (
     <>
-      <div
-        className="fixed inset-0 z-50 flex items-center justify-center bg-void/80 backdrop-blur-sm p-4 overflow-y-auto animate-in fade-in duration-150"
-        onClick={attemptClose}
+      <Modal
+        open={open}
+        onClose={attemptClose}
+        title={editingStory ? `Editar historia · ${editingStory.code}` : 'Nueva historia de usuario'}
+        description="Estructura el requerimiento según las buenas prácticas de Scrum con narrativa y criterios verificables."
+        size="lg"
       >
-        <form
-          onSubmit={handleSubmit}
-          onClick={(e) => e.stopPropagation()}
-          className="w-full max-w-2xl rounded-cards bg-obsidian border border-graphite p-6 shadow-xl space-y-5 my-auto"
-        >
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="font-display text-lg font-semibold text-bone">
-                {editingStory ? `Editar historia · ${editingStory.code}` : 'Nueva historia de usuario'}
-              </h2>
-              <p className="text-[12px] text-fog">
-                Define el requerimiento funcional, criterios de aceptación y estimación.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={attemptClose}
-              className="p-1.5 rounded-inputs text-fog hover:text-paper hover:bg-graphite"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-
-          {/* Title + AI Assistant Trigger */}
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Section 1: Title + AI Assistant Button */}
           <div className="space-y-1.5">
             <div className="flex items-center justify-between gap-2">
               <label className="text-[12px] font-medium text-mist">
-                Título o idea inicial *
+                Título de la historia *
               </label>
               {canUseAi && (
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="xs"
                   onClick={handleAiAssist}
-                  disabled={aiGenerating || saving}
-                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-buttons bg-lavender hover:bg-lavender/90 text-paper text-[12px] font-medium transition-all shadow-sm disabled:opacity-60 whitespace-nowrap"
+                  loading={aiGenerating}
+                  icon={<Sparkles className="w-3.5 h-3.5 text-iris-violet" />}
+                  className="bg-iris-violet/10 border-iris-violet/30 text-iris-violet hover:bg-iris-violet/20"
                 >
-                  {aiGenerating ? (
-                    <>
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                      Generando historia...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="w-3.5 h-3.5" />
-                      Asistencia IA
-                    </>
-                  )}
-                </button>
+                  {aiGenerating ? 'Generando borrador...' : 'Asistencia IA'}
+                </Button>
               )}
             </div>
-            <input
-              type="text"
+            <Input
               disabled={aiGenerating}
               value={title}
               onChange={(e) => {
                 setTitle(e.target.value);
                 setFieldErrors((p) => ({ ...p, title: undefined, ai: undefined }));
               }}
-              placeholder="Ej. Autenticación con huella digital para banca móvil"
-              className="w-full px-3.5 py-2.5 bg-carbon border border-graphite rounded-inputs text-[13px] text-bone placeholder:text-ash focus:outline-none focus:border-iris-violet focus:ring-1 focus:ring-iris-violet disabled:opacity-60 shadow-subtle"
+              placeholder="Ej. Autenticación biométrica para banca móvil"
+              error={fieldErrors.title || fieldErrors.ai}
             />
-            {fieldErrors.title && (
-              <p className="text-[12px] text-coral-red">{fieldErrors.title}</p>
-            )}
-            {fieldErrors.ai && (
-              <p className="text-[12px] text-coral-red">{fieldErrors.ai}</p>
-            )}
           </div>
 
-          {/* Description */}
+          {/* Section 2: Narrative Description */}
           <div className="space-y-1.5">
-            <label className="block text-[12px] font-medium text-mist">
-              Descripción (Como [rol], quiero [acción], para [beneficio])
-            </label>
-            <textarea
+            <div className="flex items-center justify-between">
+              <label className="text-[12px] font-medium text-mist">
+                Narrativa Scrum (Como [rol], quiero [acción], para [beneficio])
+              </label>
+              {aiHighlighted && (
+                <Badge variant="purple" size="sm" dot>
+                  Generado con IA
+                </Badge>
+              )}
+            </div>
+            <Textarea
               rows={3}
               disabled={aiGenerating}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Como usuario móvil, quiero autenticarme mediante mi huella dactilar, para ingresar rápidamente sin escribir mi contraseña."
-              className={`w-full px-3.5 py-2.5 bg-carbon rounded-inputs text-[13px] text-bone placeholder:text-ash focus:outline-none disabled:opacity-60 transition-shadow shadow-subtle ${
-                aiHighlighted
-                  ? 'border border-lavender shadow-[0_0_0_1px_rgba(139,92,246,0.35)]'
-                  : 'border border-graphite focus:border-iris-violet focus:ring-1 focus:ring-iris-violet'
-              }`}
+              placeholder="Como usuario final, quiero autenticarme mediante mi huella dactilar, para ingresar de forma segura y rápida sin teclear contraseña."
+              className={aiHighlighted ? 'border-iris-violet shadow-[0_0_0_1px_rgba(139,92,246,0.35)]' : undefined}
             />
           </div>
 
-          {/* Acceptance Criteria */}
-          <div className="space-y-2">
+          {/* Section 3: Acceptance Criteria */}
+          <div className="space-y-2.5">
             <div className="flex items-center justify-between">
               <label className="text-[12px] font-medium text-mist">
-                Criterios de Aceptación
+                Criterios de Aceptación ({criteria.filter((c) => c.trim()).length})
               </label>
-              <button
-                type="button"
-                disabled={aiGenerating}
-                onClick={() => setCriteria((prev) => [...prev, ''])}
-                className="inline-flex items-center gap-1 text-[12px] text-signal-teal hover:text-paper"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Agregar criterio
-              </button>
+              <span className="text-[11px] text-fog">Presiona Enter para agregar</span>
             </div>
-            <div
-              className={`space-y-2 p-3 rounded-inputs bg-carbon ${
-                aiHighlighted
-                  ? 'border border-lavender/70'
-                  : 'border border-graphite'
-              }`}
-            >
+
+            {/* Quick Add Criterion Input */}
+            <div className="flex items-center gap-2">
+              <Input
+                value={newCriterionText}
+                onChange={(e) => setNewCriterionText(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleAddCriterion();
+                  }
+                }}
+                placeholder="Escribe un criterio verificable y presiona Enter..."
+                className="flex-1"
+              />
+              <Button
+                type="button"
+                variant="secondary"
+                size="md"
+                onClick={handleAddCriterion}
+                disabled={!newCriterionText.trim()}
+                icon={<Plus className="w-3.5 h-3.5" />}
+              >
+                Agregar
+              </Button>
+            </div>
+
+            {/* Existing Criteria List */}
+            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
               {criteria.map((item, idx) => (
-                <div key={idx} className="flex items-center gap-2">
-                  <span className="font-mono text-[11px] text-ash w-5 text-right shrink-0">
+                <div
+                  key={idx}
+                  className="flex items-center gap-2 p-2 rounded-inputs bg-carbon border border-graphite text-[12px] group"
+                >
+                  <span className="font-mono text-[11px] text-fog w-5 text-center shrink-0">
                     {idx + 1}.
                   </span>
                   <input
@@ -305,14 +302,15 @@ export function StoryModal({
                       setCriteria(next);
                     }}
                     placeholder="Criterio verificable..."
-                    className="flex-1 px-2.5 py-1.5 bg-obsidian border border-graphite rounded-inputs text-[12px] text-bone placeholder:text-ash focus:outline-none focus:border-iris-violet disabled:opacity-60"
+                    className="flex-1 bg-transparent text-bone placeholder:text-ash focus:outline-none"
                   />
                   {criteria.length > 1 && (
                     <button
                       type="button"
                       disabled={aiGenerating}
                       onClick={() => setCriteria((prev) => prev.filter((_, i) => i !== idx))}
-                      className="p-1 text-fog hover:text-coral-red"
+                      className="p-1 rounded text-fog hover:text-coral-red hover:bg-graphite transition-colors"
+                      title="Eliminar criterio"
                       aria-label="Eliminar criterio"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -323,8 +321,9 @@ export function StoryModal({
             </div>
           </div>
 
-          {/* Priority & Story Points */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          {/* Section 4: Priority & Story Points */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+            {/* Priority Selector */}
             <div>
               <label className="block text-[12px] font-medium text-mist mb-1.5">
                 Prioridad *
@@ -346,7 +345,7 @@ export function StoryModal({
                       className={`py-1.5 text-[12px] font-medium rounded-inputs transition-colors ${
                         active
                           ? 'bg-iris-violet text-paper shadow-sm'
-                          : 'text-fog hover:text-paper'
+                          : 'text-fog hover:text-paper hover:bg-graphite/40'
                       }`}
                     >
                       {labels[p]}
@@ -356,12 +355,13 @@ export function StoryModal({
               </div>
             </div>
 
+            {/* Story Points */}
             <div>
               <label className="block text-[12px] font-medium text-mist mb-1.5">
-                Story Points (≥ 0)
+                Story Points (Estimación Fibonacci)
               </label>
               <div className="flex items-center gap-2">
-                <input
+                <Input
                   type="number"
                   min={0}
                   step={1}
@@ -371,7 +371,7 @@ export function StoryModal({
                     setStoryPoints(e.target.value);
                     setFieldErrors((p) => ({ ...p, points: undefined }));
                   }}
-                  className="w-24 px-3 py-2 bg-carbon border border-graphite rounded-inputs text-[13px] font-mono tabular-nums text-bone focus:outline-none focus:border-iris-violet shadow-subtle"
+                  className="w-20 text-center font-mono font-semibold text-iris-violet"
                 />
                 <div className="flex items-center gap-1">
                   {[1, 2, 3, 5, 8, 13].map((pt) => (
@@ -380,9 +380,9 @@ export function StoryModal({
                       type="button"
                       disabled={aiGenerating}
                       onClick={() => setStoryPoints(String(pt))}
-                      className={`px-2 py-1.5 rounded-inputs font-mono text-[11px] transition-colors ${
+                      className={`px-2 py-1 rounded-inputs font-mono text-[11px] font-medium transition-colors ${
                         Number(storyPoints) === pt
-                          ? 'bg-iris-violet/20 text-signal-teal border border-iris-violet/30 shadow-subtle'
+                          ? 'bg-iris-violet/20 text-iris-violet border border-iris-violet/40 shadow-xs'
                           : 'bg-carbon text-fog hover:text-paper border border-graphite'
                       }`}
                     >
@@ -397,31 +397,35 @@ export function StoryModal({
             </div>
           </div>
 
+          {/* Modal Actions Footer */}
           <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-graphite">
-            <button
+            <Button
               type="button"
+              variant="ghost"
+              size="sm"
               onClick={attemptClose}
               disabled={aiGenerating || saving}
-              className="px-4 py-2 text-[13px] text-mist hover:text-paper rounded-buttons hover:bg-graphite transition-colors"
             >
               Cancelar
-            </button>
-            <button
+            </Button>
+            <Button
               type="submit"
-              disabled={aiGenerating || saving}
-              className="px-4 py-2 bg-iris-violet hover:bg-iris-violet/90 text-paper text-[13px] font-medium rounded-buttons transition-colors disabled:opacity-60 shadow-sm"
+              variant="primary"
+              size="sm"
+              loading={saving}
+              disabled={aiGenerating}
             >
-              {saving ? 'Guardando...' : 'Guardar historia'}
-            </button>
+              Guardar historia
+            </Button>
           </div>
         </form>
-      </div>
+      </Modal>
 
-      {/* Dirty Modal Guard (User Flow Edge Case) */}
+      {/* Discard confirmation dialog when dirty */}
       <ConfirmDialog
         open={discardConfirmOpen}
-        title="Tienes cambios sin guardar"
-        description="¿Deseas descartar los cambios realizados en esta historia de usuario?"
+        title="¿Descartar cambios no guardados?"
+        description="Has realizado modificaciones en esta historia de usuario. Si sales ahora, los cambios no guardados se perderán."
         confirmLabel="Descartar cambios"
         cancelLabel="Continuar editando"
         variant="danger"

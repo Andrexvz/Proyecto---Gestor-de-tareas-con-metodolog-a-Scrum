@@ -17,15 +17,26 @@ import {
   UserCheck,
   FilterX,
   CalendarRange,
-  X,
   GripVertical,
   Trash2,
   Pencil,
+  ArrowRight,
+  Sparkles,
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { PrioritySignal, SprintStatusText, TaskColumnLabel, UserAvatar } from './UIHelpers';
+import {
+  Button,
+  Input,
+  Textarea,
+  Select,
+  Modal,
+  Badge,
+  EmptyState,
+  SkeletonLoader,
+} from './ui';
 import type {
   ProjectSummary,
   Sprint,
@@ -36,11 +47,16 @@ import type {
   UserStory,
 } from '../types/scrum';
 
-const KANBAN_COLUMNS: Array<{ id: TaskStatus; title: string; accent: string }> = [
-  { id: 'TODO', title: 'To Do', accent: 'border-t-smoke' },
-  { id: 'IN_PROGRESS', title: 'In Progress', accent: 'border-t-iris-violet' },
-  { id: 'TESTING', title: 'Testing', accent: 'border-t-signal-teal' },
-  { id: 'DONE', title: 'Done', accent: 'border-t-pulse-green' },
+const KANBAN_COLUMNS: Array<{
+  id: TaskStatus;
+  title: string;
+  accent: string;
+  badgeVariant: 'default' | 'purple' | 'info' | 'success';
+}> = [
+  { id: 'TODO', title: 'To Do', accent: 'border-t-smoke', badgeVariant: 'default' },
+  { id: 'IN_PROGRESS', title: 'In Progress', accent: 'border-t-iris-violet', badgeVariant: 'purple' },
+  { id: 'TESTING', title: 'Testing', accent: 'border-t-signal-teal', badgeVariant: 'info' },
+  { id: 'DONE', title: 'Done', accent: 'border-t-pulse-green', badgeVariant: 'success' },
 ];
 
 interface KanbanViewProps {
@@ -93,44 +109,56 @@ function DraggableTaskCard({
     <div
       ref={isOverlay ? undefined : setNodeRef}
       style={style}
-      className={`rounded-cards bg-obsidian border p-3.5 space-y-2.5 transition-shadow ${
+      className={`rounded-cards bg-carbon border p-3.5 space-y-2.5 transition-all select-none ${
         isOverlay
-          ? 'border-iris-violet shadow-xl rotate-[1.5deg] opacity-95'
+          ? 'border-iris-violet bg-obsidian shadow-2xl rotate-2 scale-[1.02] opacity-95 ring-1 ring-iris-violet/40 z-50'
           : isDragging
-          ? 'opacity-35 border-smoke'
-          : 'border-graphite hover:border-smoke shadow-sm'
+          ? 'opacity-30 border-dashed border-smoke'
+          : 'border-graphite hover:border-iris-violet/40 hover:shadow-md'
       }`}
     >
-      {/* Card top metadata */}
+      {/* Card Header: Drag Handle, Code, Story Tag & Priority */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
           <button
             type="button"
             {...(isOverlay ? {} : listeners)}
             {...(isOverlay ? {} : attributes)}
-            className="text-fog hover:text-paper cursor-grab active:cursor-grabbing shrink-0"
+            className="text-fog hover:text-paper cursor-grab active:cursor-grabbing p-0.5 rounded shrink-0 transition-colors"
+            title="Arrastrar tarea"
             aria-label="Arrastrar tarea"
           >
             <GripVertical className="w-3.5 h-3.5" />
           </button>
-          <span className="font-mono text-[11px] font-medium text-signal-teal">{task.code}</span>
+          <span className="font-mono text-[11px] font-semibold text-signal-teal bg-signal-teal/10 px-1 py-0.5 rounded">
+            {task.code}
+          </span>
           {story && (
             <>
-              <span className="text-ash">·</span>
-              <span className="font-mono text-[11px] text-fog truncate">{story.code}</span>
+              <span className="text-ash" aria-hidden="true">
+                ·
+              </span>
+              <span
+                className="font-mono text-[11px] text-fog truncate max-w-[120px]"
+                title={story.title}
+              >
+                {story.code}
+              </span>
             </>
           )}
         </div>
+
         <div className="flex items-center gap-1.5 shrink-0">
           {story && <PrioritySignal priority={story.priority} />}
           {!isOverlay && (
-            <>
+            <div className="flex items-center gap-0.5">
               {onEditTask && (
                 <button
                   type="button"
                   onClick={() => onEditTask(task)}
-                  className="p-1 rounded text-fog hover:text-iris-violet transition-colors"
+                  className="p-1 rounded-inputs text-fog hover:text-iris-violet hover:bg-graphite transition-colors"
                   title="Editar tarea"
+                  aria-label="Editar tarea"
                 >
                   <Pencil className="w-3 h-3" />
                 </button>
@@ -138,26 +166,29 @@ function DraggableTaskCard({
               <button
                 type="button"
                 onClick={() => onDeleteTask(task.id)}
-                className="p-1 rounded text-fog hover:text-coral-red transition-colors"
+                className="p-1 rounded-inputs text-fog hover:text-coral-red hover:bg-graphite transition-colors"
                 title="Eliminar tarea"
+                aria-label="Eliminar tarea"
               >
                 <Trash2 className="w-3 h-3" />
               </button>
-            </>
+            </div>
           )}
         </div>
       </div>
 
-      {/* Task description */}
-      <p className="text-[13px] text-bone leading-[19px]">{task.description}</p>
+      {/* Task Description */}
+      <p className="text-[13px] text-bone leading-[19px] break-words">
+        {task.description}
+      </p>
 
-      {/* Bottom bar: assignee + accessible status selector */}
-      <div className="pt-2 border-t border-graphite flex items-center justify-between gap-2">
+      {/* Bottom bar: Assignee & Accessible Status selector */}
+      <div className="pt-2 border-t border-graphite/60 flex items-center justify-between gap-2">
         <div className="flex items-center gap-1.5 min-w-0">
           {assignee ? (
             <UserAvatar name={assignee.fullName} size="xs" />
           ) : (
-            <span className="w-5 h-5 rounded-full border border-dashed border-smoke inline-flex items-center justify-center text-[10px] text-fog">
+            <span className="w-5 h-5 rounded-full border border-dashed border-smoke inline-flex items-center justify-center text-[10px] text-fog shrink-0">
               ?
             </span>
           )}
@@ -167,7 +198,7 @@ function DraggableTaskCard({
               onChangeAssignee(task.id, e.target.value ? Number(e.target.value) : null)
             }
             aria-label="Responsable de tarea"
-            className="bg-transparent text-[11px] text-mist hover:text-paper focus:outline-none truncate max-w-[120px] cursor-pointer"
+            className="bg-transparent text-[11px] text-mist hover:text-paper focus:outline-none truncate max-w-[110px] cursor-pointer"
           >
             <option value="" className="bg-obsidian">
               Sin asignar
@@ -180,14 +211,15 @@ function DraggableTaskCard({
           </select>
         </div>
 
+        {/* Move dropdown (accessibility & keyboard support) */}
         <select
           value={task.status}
           onChange={(e) => onChangeStatus(task.id, e.target.value as TaskStatus)}
-          aria-label="Cambiar columna"
-          className="px-1.5 py-0.5 bg-carbon border border-graphite rounded-inputs text-[11px] font-mono text-fog hover:text-paper focus:outline-none"
+          aria-label="Mover a otra columna"
+          className="px-1.5 py-0.5 bg-obsidian border border-graphite rounded-inputs text-[11px] font-mono text-fog hover:text-paper focus:outline-none focus:border-iris-violet cursor-pointer"
         >
           {KANBAN_COLUMNS.map((col) => (
-            <option key={col.id} value={col.id}>
+            <option key={col.id} value={col.id} className="bg-obsidian">
               {col.title}
             </option>
           ))}
@@ -201,12 +233,14 @@ function KanbanColumn({
   id,
   title,
   accent,
+  badgeVariant,
   count,
   children,
 }: {
   id: TaskStatus;
   title: string;
   accent: string;
+  badgeVariant: 'default' | 'purple' | 'info' | 'success';
   count: number;
   children: React.ReactNode;
 }) {
@@ -215,13 +249,17 @@ function KanbanColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`flex flex-col rounded-cards bg-carbon border border-t-2 ${accent} min-h-[420px] transition-colors shadow-subtle ${
-        isOver ? 'border-iris-violet bg-obsidian' : 'border-graphite'
+      className={`flex flex-col rounded-cards bg-carbon/60 border border-t-2 ${accent} min-h-[460px] transition-all duration-150 shadow-subtle ${
+        isOver
+          ? 'border-iris-violet/70 bg-iris-violet/5 ring-1 ring-iris-violet/30 shadow-md'
+          : 'border-graphite'
       }`}
     >
       <div className="px-3.5 py-3 border-b border-graphite flex items-center justify-between">
-        <h3 className="text-[13px] font-semibold text-bone">{title}</h3>
-        <span className="font-mono tabular-nums text-[12px] text-fog">{count}</span>
+        <h3 className="text-[13px] font-semibold text-bone tracking-tight">{title}</h3>
+        <Badge variant={badgeVariant} size="sm" shape="pill">
+          {count}
+        </Badge>
       </div>
       <div className="flex-1 p-2.5 space-y-2.5 overflow-y-auto">{children}</div>
     </div>
@@ -345,10 +383,13 @@ export function KanbanView({
       setOptimisticTasks(null);
       showToast(`Tarea ${current.code} movida a ${TaskColumnLabel(newStatus)}`, 'success');
     } catch (err: any) {
-      // Automatic visual rollback on network/500 failure
+      // Automatic visual rollback on failure
       setOptimisticTasks(snapshot);
       setTimeout(() => setOptimisticTasks(null), 50);
-      showToast(err?.message || 'No se pudo actualizar la tarea. Verifica tu conexión e inténtalo nuevamente', 'error');
+      showToast(
+        err?.message || 'No se pudo actualizar la tarea. Se restauró el estado anterior.',
+        'error'
+      );
     }
   };
 
@@ -475,7 +516,11 @@ export function KanbanView({
     return (
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         {[1, 2, 3, 4].map((i) => (
-          <div key={i} className="h-[460px] rounded-xl skeleton-wave border border-[#1E293B]" />
+          <div key={i} className="h-[480px] rounded-cards bg-carbon/50 border border-graphite p-4 space-y-3">
+            <SkeletonLoader variant="text" width="40%" height={16} />
+            <SkeletonLoader variant="card" height={100} />
+            <SkeletonLoader variant="card" height={100} />
+          </div>
         ))}
       </div>
     );
@@ -484,40 +529,37 @@ export function KanbanView({
   // Empty State when no Sprint is ACTIVE (RF-11)
   if (!activeSprint) {
     return (
-      <div className="rounded-xl bg-[#0F172A] border border-[#1E293B] py-16 px-6 text-center max-w-lg mx-auto mt-8">
-        <div className="w-12 h-12 rounded-xl bg-[#171F33] border border-[#2D3449] flex items-center justify-center mx-auto text-[#B4C5FF]">
-          <CalendarRange className="w-6 h-6" />
-        </div>
-        <h1 className="mt-4 font-display text-lg font-semibold text-white">
-          No hay un Sprint activo en este proyecto
-        </h1>
-        <p className="mt-1.5 text-[13px] text-[#8D90A0]">
-          Inicia un Sprint desde la vista de planificación para habilitar el tablero Kanban y ejecutar tareas técnicas.
-        </p>
-        <button
-          type="button"
-          onClick={onGoToSprints}
-          className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#2563EB] hover:bg-[#1D4ED8] text-[13px] font-medium text-white transition-colors"
-        >
-          Ir a planificación
-        </button>
-      </div>
+      <EmptyState
+        icon={<CalendarRange className="w-6 h-6" />}
+        title="No hay un Sprint activo en este proyecto"
+        description="Inicia un Sprint desde la vista de planificación para habilitar el tablero Kanban interactivo y gestionar las tareas técnicas en ejecución."
+        action={
+          <Button
+            variant="primary"
+            size="md"
+            onClick={onGoToSprints}
+            icon={<ArrowRight className="w-4 h-4" />}
+          >
+            Ir a planificación de Sprints
+          </Button>
+        }
+      />
     );
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-5">
       {/* Active Sprint Header */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
         <div>
           <div className="flex flex-wrap items-center gap-2.5">
             <h1 className="font-display text-2xl font-semibold text-bone tracking-tight">
-              {activeSprint.name}
+              Tablero Kanban · {activeSprint.name}
             </h1>
             <SprintStatusText status="ACTIVE" />
           </div>
           <p className="mt-1 text-[13px] text-fog">
-            <span className="font-mono tabular-nums">
+            <span className="font-mono tabular-nums text-bone">
               {activeSprint.startDate} → {activeSprint.endDate}
             </span>{' '}
             · {activeSprint.goal || project.name}
@@ -526,27 +568,23 @@ export function KanbanView({
 
         {/* Filters Toolbar (RF-12) */}
         <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
+          <Button
+            variant={onlyMyTasks ? 'primary' : 'outline'}
+            size="xs"
             onClick={() => setOnlyMyTasks((v) => !v)}
-            className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-inputs text-[12px] font-medium border transition-colors whitespace-nowrap shadow-subtle ${
-              onlyMyTasks
-                ? 'bg-iris-violet border-iris-violet text-paper shadow-sm'
-                : 'bg-carbon border-graphite text-mist hover:text-paper hover:border-smoke'
-            }`}
+            icon={<UserCheck className="w-3.5 h-3.5" />}
           >
-            <UserCheck className="w-3.5 h-3.5" />
             Mis tareas
-          </button>
+          </Button>
 
           {!onlyMyTasks && (
             <select
               value={assigneeFilter}
               onChange={(e) => setAssigneeFilter(e.target.value)}
               aria-label="Filtrar por desarrollador"
-              className="px-3 py-1.5 rounded-inputs bg-carbon border border-graphite text-[12px] text-mist focus:border-iris-violet shadow-subtle"
+              className="px-2.5 py-1.5 rounded-inputs bg-carbon border border-graphite text-[12px] text-mist focus:border-iris-violet shadow-subtle cursor-pointer"
             >
-              <option value="ALL">Todos los responsables</option>
+              <option value="ALL">Todos los miembros</option>
               <option value="UNASSIGNED">Sin asignar</option>
               {projectUsers.map((u) => (
                 <option key={u.id} value={u.id}>
@@ -556,7 +594,7 @@ export function KanbanView({
             </select>
           )}
 
-          <div className="flex items-center gap-1 p-1 bg-carbon border border-graphite rounded-inputs shadow-subtle">
+          <div className="flex items-center gap-1 p-0.5 bg-carbon border border-graphite rounded-inputs text-[11px] shadow-subtle">
             {(['ALL', 'HIGH', 'MEDIUM', 'LOW'] as const).map((p) => {
               const label =
                 p === 'ALL' ? 'Todas' : p === 'HIGH' ? 'Alta' : p === 'MEDIUM' ? 'Media' : 'Baja';
@@ -565,9 +603,9 @@ export function KanbanView({
                   key={p}
                   type="button"
                   onClick={() => setPriorityFilter(p)}
-                  className={`px-2 py-0.5 rounded-sm text-[11px] font-medium transition-colors ${
+                  className={`px-2 py-0.5 rounded-sm font-medium transition-colors ${
                     priorityFilter === p
-                      ? 'bg-graphite text-paper shadow-subtle'
+                      ? 'bg-graphite text-paper shadow-xs'
                       : 'text-fog hover:text-paper'
                   }`}
                 >
@@ -579,7 +617,7 @@ export function KanbanView({
         </div>
       </div>
 
-      {/* Sprint Stories Strip with "+ Agregar tarea" and Auto-Completion check */}
+      {/* Active Stories Strip with "+ Agregar tarea" */}
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
         {activeStories.map((story) => {
           const stTasks = sprintTasks.filter((t) => t.userStoryId === story.id);
@@ -589,29 +627,32 @@ export function KanbanView({
           return (
             <div
               key={story.id}
-              className={`rounded-cards p-3.5 border flex flex-col justify-between gap-2.5 shadow-subtle ${
+              className={`rounded-cards p-3.5 border flex flex-col justify-between gap-2.5 transition-all shadow-subtle ${
                 allDone
                   ? 'bg-obsidian border-pulse-green/40'
-                  : 'bg-carbon border-graphite'
+                  : 'bg-carbon border-graphite hover:border-iris-violet/30'
               }`}
             >
               <div className="space-y-1">
                 <div className="flex items-center justify-between gap-2 text-[11px]">
                   <div className="flex items-center gap-1.5">
-                    <span className="font-mono text-signal-teal">{story.code}</span>
-                    <span className="text-ash">·</span>
+                    <span className="font-mono text-signal-teal font-semibold">
+                      {story.code}
+                    </span>
+                    <span className="text-ash" aria-hidden="true">
+                      ·
+                    </span>
                     <span className="font-mono tabular-nums text-fog">
                       {story.storyPoints} pts
                     </span>
                   </div>
                   {allDone ? (
-                    <span className="inline-flex items-center gap-1 text-pulse-green font-medium">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      Lista
-                    </span>
+                    <Badge variant="success" size="sm" dot>
+                      Completada
+                    </Badge>
                   ) : (
                     <span className="font-mono tabular-nums text-fog">
-                      {doneCount}/{stTasks.length}
+                      <strong className="text-bone">{doneCount}</strong>/{stTasks.length} tareas
                     </span>
                   )}
                 </div>
@@ -628,7 +669,7 @@ export function KanbanView({
                   setTaskAssigneeId(user ? String(user.id) : '');
                   setTaskError('');
                 }}
-                className="inline-flex items-center gap-1 text-[12px] font-medium text-signal-teal hover:text-paper transition-colors w-fit"
+                className="inline-flex items-center gap-1 text-[12px] font-medium text-signal-teal hover:text-paper transition-colors w-fit focus-visible:outline-none focus-visible:underline"
               >
                 <Plus className="w-3.5 h-3.5" />
                 Agregar tarea
@@ -640,23 +681,20 @@ export function KanbanView({
 
       {/* Empty Filter State */}
       {hasActiveFilters && filteredTasks.length === 0 ? (
-        <div className="rounded-xl bg-[#0F172A] border border-[#1E293B] py-12 px-6 text-center">
-          <p className="text-[14px] font-medium text-white">
-            No encontramos tareas con estos filtros
-          </p>
-          <button
-            type="button"
-            onClick={clearFilters}
-            className="mt-3 inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#1E293B] hover:bg-[#2D3449] text-[12px] font-medium text-white"
-          >
-            <FilterX className="w-4 h-4" />
-            Limpiar filtros
-          </button>
-        </div>
+        <EmptyState
+          icon={<FilterX className="w-6 h-6" />}
+          title="No encontramos tareas que coincidan"
+          description="Ninguna tarea técnica cumple con los filtros de responsable o prioridad activos actualmente."
+          action={
+            <Button variant="outline" size="sm" onClick={clearFilters}>
+              Limpiar filtros
+            </Button>
+          }
+        />
       ) : (
         <>
           {/* Mobile column segmented tabs */}
-          <div className="md:hidden grid grid-cols-4 gap-1 p-1 rounded-lg bg-[#0F172A] border border-[#1E293B]">
+          <div className="md:hidden grid grid-cols-4 gap-1 p-1 rounded-cards bg-carbon border border-graphite">
             {KANBAN_COLUMNS.map((col) => {
               const count = filteredTasks.filter((t) => t.status === col.id).length;
               return (
@@ -664,8 +702,10 @@ export function KanbanView({
                   key={col.id}
                   type="button"
                   onClick={() => setMobileColumn(col.id)}
-                  className={`py-1.5 px-1 rounded-md text-[11px] font-medium transition-colors truncate ${
-                    mobileColumn === col.id ? 'bg-[#2563EB] text-white' : 'text-[#8D90A0]'
+                  className={`py-1.5 px-1 rounded-inputs text-[11px] font-medium transition-colors truncate ${
+                    mobileColumn === col.id
+                      ? 'bg-iris-violet text-paper shadow-sm'
+                      : 'text-fog hover:text-paper'
                   }`}
                 >
                   {col.title} ({count})
@@ -674,6 +714,7 @@ export function KanbanView({
             })}
           </div>
 
+          {/* Drag and Drop Canvas */}
           <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-3">
               {KANBAN_COLUMNS.map((col) => {
@@ -687,10 +728,11 @@ export function KanbanView({
                       id={col.id}
                       title={col.title}
                       accent={col.accent}
+                      badgeVariant={col.badgeVariant}
                       count={colTasks.length}
                     >
                       {colTasks.length === 0 ? (
-                        <div className="h-24 rounded-lg border border-dashed border-[#222A3D] flex items-center justify-center text-[12px] text-[#64748B]">
+                        <div className="h-28 rounded-cards border border-dashed border-graphite/60 flex items-center justify-center text-[12px] text-fog">
                           Sin tareas en {TaskColumnLabel(col.id)}
                         </div>
                       ) : (
@@ -699,7 +741,9 @@ export function KanbanView({
                             key={task.id}
                             task={task}
                             story={storyMap.get(task.userStoryId)}
-                            assignee={task.assignedToId ? userMap.get(task.assignedToId) : undefined}
+                            assignee={
+                              task.assignedToId ? userMap.get(task.assignedToId) : undefined
+                            }
                             projectMembers={projectUsers}
                             currentUserId={user?.id ?? 0}
                             onChangeAssignee={handleChangeAssignee}
@@ -715,6 +759,7 @@ export function KanbanView({
               })}
             </div>
 
+            {/* Drag Overlay visual enhancement */}
             <DragOverlay>
               {activeDragTask ? (
                 <DraggableTaskCard
@@ -740,182 +785,138 @@ export function KanbanView({
 
       {/* Quick Add Task Modal */}
       {addTaskStory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-void/80 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <form
-            onSubmit={handleCreateTask}
-            className="w-full max-w-md rounded-cards bg-obsidian border border-graphite p-6 shadow-xl space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="font-display text-lg font-semibold text-bone">Agregar tarea técnica</h2>
-                <p className="text-[12px] text-signal-teal font-mono">
-                  {addTaskStory.code} · {addTaskStory.title}
-                </p>
-              </div>
-              <button
+        <Modal
+          open={Boolean(addTaskStory)}
+          onClose={() => setAddTaskStory(null)}
+          title="Agregar tarea técnica"
+          description={`Historia: ${addTaskStory.code} · ${addTaskStory.title}`}
+          size="md"
+        >
+          <form onSubmit={handleCreateTask} className="space-y-4">
+            <Textarea
+              label="Descripción técnica de la tarea"
+              required
+              rows={3}
+              autoFocus
+              value={taskDesc}
+              onChange={(e) => {
+                setTaskDesc(e.target.value);
+                setTaskError('');
+              }}
+              placeholder="Ej. Implementar endpoint POST /api/v1/auth y pruebas unitarias"
+              error={taskError}
+            />
+
+            <Select
+              label="Responsable asignado"
+              value={taskAssigneeId}
+              onChange={(e) => setTaskAssigneeId(e.target.value)}
+            >
+              <option value="">Sin asignar</option>
+              {projectUsers.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.id === user?.id ? `${u.fullName} (Autoasignarme)` : u.fullName}
+                </option>
+              ))}
+            </Select>
+
+            <div className="flex justify-end gap-2.5 pt-2 border-t border-graphite">
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => setAddTaskStory(null)}
-                className="text-fog hover:text-paper"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div>
-              <label className="block text-[12px] font-medium text-mist mb-1.5">
-                Descripción técnica *
-              </label>
-              <textarea
-                rows={3}
-                autoFocus
-                value={taskDesc}
-                onChange={(e) => {
-                  setTaskDesc(e.target.value);
-                  setTaskError('');
-                }}
-                placeholder="Ej. Implementar endpoint POST /webauthn/register y pruebas unitarias"
-                className="w-full px-3.5 py-2 bg-carbon border border-graphite rounded-inputs text-[13px] text-bone placeholder:text-ash focus:outline-none focus:border-iris-violet focus:ring-1 focus:ring-iris-violet shadow-subtle"
-              />
-              {taskError && <p className="mt-1 text-[12px] text-coral-red">{taskError}</p>}
-            </div>
-
-            <div>
-              <label className="block text-[12px] font-medium text-mist mb-1.5">
-                Responsable asignado
-              </label>
-              <select
-                value={taskAssigneeId}
-                onChange={(e) => setTaskAssigneeId(e.target.value)}
-                className="w-full px-3 py-2 bg-carbon border border-graphite rounded-inputs text-[13px] text-bone focus:border-iris-violet shadow-subtle"
-              >
-                <option value="">Sin asignar</option>
-                {projectUsers.map((u) => (
-                  <option key={u.id} value={u.id} className="bg-obsidian">
-                    {u.id === user?.id ? `${u.fullName} (Autoasignarme)` : u.fullName}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setAddTaskStory(null)}
-                className="px-4 py-2 text-[13px] text-mist hover:text-paper rounded-buttons hover:bg-graphite transition-colors"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
-                disabled={savingTask}
-                className="px-4 py-2 text-[13px] font-medium bg-iris-violet hover:bg-iris-violet/90 text-paper rounded-buttons disabled:opacity-60 shadow-sm"
+                variant="primary"
+                size="sm"
+                loading={savingTask}
               >
-                {savingTask ? 'Creando...' : 'Crear en To Do'}
-              </button>
+                Crear en To Do
+              </Button>
             </div>
           </form>
-        </div>
+        </Modal>
       )}
 
       {/* Edit Task Modal */}
       {editingTask && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-void/80 backdrop-blur-sm p-4 animate-in fade-in duration-150">
-          <form
-            onSubmit={handleSaveEditTask}
-            className="w-full max-w-md rounded-cards bg-obsidian border border-graphite p-6 shadow-xl space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="font-display text-lg font-semibold text-bone">Editar tarea técnica</h2>
-                <p className="text-[12px] text-signal-teal font-mono">
-                  {editingTask.code}
-                  {storyMap.get(editingTask.userStoryId)
-                    ? ` · ${storyMap.get(editingTask.userStoryId)?.title}`
-                    : ''}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setEditingTask(null)}
-                className="text-fog hover:text-paper"
+        <Modal
+          open={Boolean(editingTask)}
+          onClose={() => setEditingTask(null)}
+          title="Editar tarea técnica"
+          description={`Tarea ${editingTask.code}${
+            storyMap.get(editingTask.userStoryId)
+              ? ` · ${storyMap.get(editingTask.userStoryId)?.title}`
+              : ''
+          }`}
+          size="md"
+        >
+          <form onSubmit={handleSaveEditTask} className="space-y-4">
+            <Textarea
+              label="Descripción técnica"
+              required
+              rows={3}
+              autoFocus
+              value={editTaskDesc}
+              onChange={(e) => {
+                setEditTaskDesc(e.target.value);
+                setEditTaskError('');
+              }}
+              placeholder="Descripción técnica de la tarea"
+              error={editTaskError}
+            />
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <Select
+                label="Estado Kanban"
+                value={editTaskStatus}
+                onChange={(e) => setEditTaskStatus(e.target.value as TaskStatus)}
               >
-                <X className="w-4 h-4" />
-              </button>
+                {KANBAN_COLUMNS.map((col) => (
+                  <option key={col.id} value={col.id}>
+                    {col.title}
+                  </option>
+                ))}
+              </Select>
+
+              <Select
+                label="Responsable asignado"
+                value={editTaskAssigneeId}
+                onChange={(e) => setEditTaskAssigneeId(e.target.value)}
+              >
+                <option value="">Sin asignar</option>
+                {projectUsers.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.id === user?.id ? `${u.fullName} (Yo)` : u.fullName}
+                  </option>
+                ))}
+              </Select>
             </div>
 
-            <div>
-              <label className="block text-[12px] font-medium text-mist mb-1.5">
-                Descripción técnica *
-              </label>
-              <textarea
-                rows={3}
-                autoFocus
-                value={editTaskDesc}
-                onChange={(e) => {
-                  setEditTaskDesc(e.target.value);
-                  setEditTaskError('');
-                }}
-                placeholder="Descripción técnica de la tarea"
-                className="w-full px-3.5 py-2 bg-carbon border border-graphite rounded-inputs text-[13px] text-bone placeholder:text-ash focus:outline-none focus:border-iris-violet focus:ring-1 focus:ring-iris-violet shadow-subtle"
-              />
-              {editTaskError && <p className="mt-1 text-[12px] text-coral-red">{editTaskError}</p>}
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[12px] font-medium text-mist mb-1.5">
-                  Estado
-                </label>
-                <select
-                  value={editTaskStatus}
-                  onChange={(e) => setEditTaskStatus(e.target.value as TaskStatus)}
-                  className="w-full px-3 py-2 bg-carbon border border-graphite rounded-inputs text-[13px] text-bone focus:border-iris-violet shadow-subtle"
-                >
-                  {KANBAN_COLUMNS.map((col) => (
-                    <option key={col.id} value={col.id} className="bg-obsidian">
-                      {col.title}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block text-[12px] font-medium text-mist mb-1.5">
-                  Responsable
-                </label>
-                <select
-                  value={editTaskAssigneeId}
-                  onChange={(e) => setEditTaskAssigneeId(e.target.value)}
-                  className="w-full px-3 py-2 bg-carbon border border-graphite rounded-inputs text-[13px] text-bone focus:border-iris-violet shadow-subtle"
-                >
-                  <option value="">Sin asignar</option>
-                  {projectUsers.map((u) => (
-                    <option key={u.id} value={u.id} className="bg-obsidian">
-                      {u.id === user?.id ? `${u.fullName} (Yo)` : u.fullName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2.5 pt-2">
-              <button
+            <div className="flex justify-end gap-2.5 pt-2 border-t border-graphite">
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => setEditingTask(null)}
-                className="px-4 py-2 text-[13px] text-mist hover:text-paper rounded-buttons hover:bg-graphite transition-colors"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 type="submit"
-                disabled={savingEditTask}
-                className="px-4 py-2 text-[13px] font-medium bg-iris-violet hover:bg-iris-violet/90 text-paper rounded-buttons disabled:opacity-60 shadow-sm"
+                variant="primary"
+                size="sm"
+                loading={savingEditTask}
               >
-                {savingEditTask ? 'Guardando...' : 'Guardar cambios'}
-              </button>
+                Guardar cambios
+              </Button>
             </div>
           </form>
-        </div>
+        </Modal>
       )}
     </div>
   );

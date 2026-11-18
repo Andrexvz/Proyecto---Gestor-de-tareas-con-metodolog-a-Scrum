@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import {
   Plus,
   Users,
@@ -6,13 +6,29 @@ import {
   ArrowRight,
   FolderOpen,
   UserPlus,
-  X,
   RefreshCw,
+  FolderKanban,
+  Activity,
+  CheckCircle2,
+  Zap,
+  Kanban,
+  ListTodo,
 } from 'lucide-react';
+import { motion, useReducedMotion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { apiFetch } from '../lib/api';
 import { ConfirmDialog, SprintStatusText, UserAvatar, formatRoleLabel } from './UIHelpers';
+import {
+  Button,
+  Input,
+  Textarea,
+  Select,
+  Modal,
+  Badge,
+  EmptyState,
+  SkeletonCard,
+} from './ui';
 import type { ProjectSummary, ScrumRole, User } from '../types/scrum';
 import type { ActiveRoute } from './AppShell';
 
@@ -37,6 +53,7 @@ export function DashboardView({
 }: DashboardViewProps) {
   const { user } = useAuth();
   const { showToast } = useToast();
+  const shouldReduceMotion = useReducedMotion();
   const isAdmin = user?.globalRole === 'ADMIN';
 
   // Create Project Modal
@@ -63,6 +80,28 @@ export function DashboardView({
   // Delete project confirmation
   const [deleteTarget, setDeleteTarget] = useState<ProjectSummary | null>(null);
   const [deleting, setDeleting] = useState(false);
+
+  // Overall statistics calculation
+  const stats = useMemo(() => {
+    const totalProjects = projects.length;
+    const activeSprintsCount = projects.filter((p) => p.activeSprint !== null).length;
+    const totalStories = projects.reduce((acc, p) => acc + (p.totalStories || 0), 0);
+    const completedStories = projects.reduce((acc, p) => acc + (p.completedStories || 0), 0);
+    const totalPoints = projects.reduce((acc, p) => acc + (p.totalPoints || 0), 0);
+    const completedPoints = projects.reduce((acc, p) => acc + (p.completedPoints || 0), 0);
+    const overallVelocity =
+      totalPoints > 0 ? Math.round((completedPoints / totalPoints) * 100) : 0;
+
+    return {
+      totalProjects,
+      activeSprintsCount,
+      totalStories,
+      completedStories,
+      totalPoints,
+      completedPoints,
+      overallVelocity,
+    };
+  }, [projects]);
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -171,51 +210,155 @@ export function DashboardView({
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header with Title & Quick Actions */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-semibold text-white tracking-tight">
-            Proyectos Scrum
-          </h1>
-          <p className="mt-1 text-[13px] text-[#8D90A0]">
-            Selecciona un espacio de trabajo para gestionar el Product Backlog, Sprints y Tablero Kanban.
+          <div className="flex items-center gap-2.5">
+            <h1 className="font-display text-2xl font-semibold text-bone tracking-tight">
+              Dashboard de Proyectos Scrum
+            </h1>
+            <Badge variant="purple" shape="pill">
+              {projects.length} {projects.length === 1 ? 'Espacio' : 'Espacios'}
+            </Badge>
+          </div>
+          <p className="mt-1 text-[13px] text-fog leading-relaxed">
+            Gestiona tus espacios de trabajo, monitorea el rendimiento de los Sprints y da seguimiento a las historias de usuario.
           </p>
         </div>
 
         {isAdmin && (
           <div className="flex items-center gap-2.5 shrink-0">
-            <button
-              type="button"
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setUserModalOpen(true)}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#131B2E] hover:bg-[#1E293B] border border-[#334155] text-[13px] font-medium text-[#DAE2FD] transition-colors whitespace-nowrap"
+              icon={<UserPlus className="w-3.5 h-3.5" />}
             >
-              <UserPlus className="w-4 h-4" />
               Registrar usuario
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => setCreateOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#2563EB] hover:bg-[#1D4ED8] text-[13px] font-medium text-white transition-colors whitespace-nowrap"
+              icon={<Plus className="w-3.5 h-3.5" />}
             >
-              <Plus className="w-4 h-4" />
               Crear proyecto
-            </button>
+            </Button>
           </div>
         )}
       </div>
 
-      {/* Network Error Banner */}
+      {/* Network Error Alert */}
       {loadError && (
-        <div className="flex items-center justify-between gap-4 px-4 py-3 rounded-xl bg-[#93000A]/30 border border-[#F43F5E]/40 text-[13px] text-[#FFDBD9]">
+        <div className="flex items-center justify-between gap-4 px-4 py-3 rounded-cards bg-coral-red/10 border border-coral-red/30 text-[13px] text-coral-red">
           <span>{loadError}</span>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={onRetry}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-[#1E293B] hover:bg-[#2D3449] text-white text-[12px] font-medium whitespace-nowrap"
+            icon={<RefreshCw className="w-3 h-3" />}
           >
-            <RefreshCw className="w-3.5 h-3.5" />
-            Reintentar conexión
-          </button>
+            Reintentar
+          </Button>
+        </div>
+      )}
+
+      {/* Statistics Cards Overview */}
+      {!loading && projects.length > 0 && (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+          <motion.div
+            initial={shouldReduceMotion ? {} : { opacity: 0, y: 10 }}
+            animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
+            transition={{ duration: 0.18 }}
+            className="p-4 rounded-cards bg-carbon border border-graphite shadow-subtle flex flex-col justify-between"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[12px] font-medium text-fog">Proyectos Activos</span>
+              <div className="p-1.5 rounded-md bg-iris-violet/10 text-iris-violet">
+                <FolderKanban className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <span className="font-display text-2xl font-bold text-bone">
+                {stats.totalProjects}
+              </span>
+              <p className="text-[11px] text-fog mt-0.5">Espacios registrados</p>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={shouldReduceMotion ? {} : { opacity: 0, y: 10 }}
+            animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
+            transition={{ duration: 0.22 }}
+            className="p-4 rounded-cards bg-carbon border border-graphite shadow-subtle flex flex-col justify-between"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[12px] font-medium text-fog">Sprints en Curso</span>
+              <div className="p-1.5 rounded-md bg-signal-teal/10 text-signal-teal">
+                <Activity className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <span className="font-display text-2xl font-bold text-bone">
+                {stats.activeSprintsCount}
+              </span>
+              <p className="text-[11px] text-fog mt-0.5">
+                {stats.activeSprintsCount === 1 ? 'Sprint activo' : 'Sprints activos'}
+              </p>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={shouldReduceMotion ? {} : { opacity: 0, y: 10 }}
+            animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
+            transition={{ duration: 0.26 }}
+            className="p-4 rounded-cards bg-carbon border border-graphite shadow-subtle flex flex-col justify-between"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[12px] font-medium text-fog">Historias de Usuario</span>
+              <div className="p-1.5 rounded-md bg-pulse-green/10 text-pulse-green">
+                <CheckCircle2 className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-display text-2xl font-bold text-bone">
+                  {stats.completedStories}
+                </span>
+                <span className="text-[13px] text-fog">/ {stats.totalStories}</span>
+              </div>
+              <p className="text-[11px] text-pulse-green mt-0.5 font-medium">
+                {stats.totalStories > 0
+                  ? `${Math.round((stats.completedStories / stats.totalStories) * 100)}% completadas`
+                  : 'Sin historias'}
+              </p>
+            </div>
+          </motion.div>
+
+          <motion.div
+            initial={shouldReduceMotion ? {} : { opacity: 0, y: 10 }}
+            animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="p-4 rounded-cards bg-carbon border border-graphite shadow-subtle flex flex-col justify-between"
+          >
+            <div className="flex items-center justify-between">
+              <span className="text-[12px] font-medium text-fog">Entrega de Puntos</span>
+              <div className="p-1.5 rounded-md bg-amber-400/10 text-amber-400">
+                <Zap className="w-4 h-4" />
+              </div>
+            </div>
+            <div className="mt-3">
+              <div className="flex items-baseline gap-1.5">
+                <span className="font-display text-2xl font-bold text-bone">
+                  {stats.completedPoints}
+                </span>
+                <span className="text-[13px] text-fog">/ {stats.totalPoints} pts</span>
+              </div>
+              <p className="text-[11px] text-fog mt-0.5">
+                {stats.overallVelocity}% de velocidad global
+              </p>
+            </div>
+          </motion.div>
         </div>
       )}
 
@@ -223,290 +366,286 @@ export function DashboardView({
       {loading ? (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div
-              key={i}
-              className="h-56 rounded-xl bg-[#131B2E] border border-[#1E293B] p-5 flex flex-col justify-between"
-            >
-              <div className="space-y-3">
-                <div className="h-4 w-24 rounded skeleton-wave" />
-                <div className="h-6 w-3/4 rounded skeleton-wave" />
-                <div className="h-4 w-full rounded skeleton-wave" />
-              </div>
-              <div className="h-8 w-full rounded skeleton-wave" />
-            </div>
+            <SkeletonCard key={i} />
           ))}
         </div>
       ) : projects.length === 0 ? (
-        <div className="rounded-xl bg-[#0F172A] border border-[#1E293B] py-16 px-6 text-center max-w-lg mx-auto">
-          <div className="w-12 h-12 rounded-xl bg-[#171F33] border border-[#2D3449] flex items-center justify-center mx-auto text-[#8D90A0]">
-            <FolderOpen className="w-6 h-6" />
-          </div>
-          <h2 className="mt-4 font-display text-lg font-semibold text-white">
-            Todavía no hay proyectos registrados
-          </h2>
-          <p className="mt-1.5 text-[13px] text-[#8D90A0]">
-            {isAdmin
-              ? 'Crea tu primer proyecto Scrum para comenzar a estructurar el Backlog y planificar Sprints.'
-              : 'Solicita a un Administrador que te asigne una membresía en un proyecto.'}
-          </p>
-          {isAdmin && (
-            <button
-              type="button"
-              onClick={() => setCreateOpen(true)}
-              className="mt-5 inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#2563EB] hover:bg-[#1D4ED8] text-[13px] font-medium text-white transition-colors"
-            >
-              <Plus className="w-4 h-4" />
-              Crear proyecto
-            </button>
-          )}
-        </div>
+        <EmptyState
+          icon={<FolderOpen className="w-6 h-6" />}
+          title="Todavía no hay proyectos registrados"
+          description={
+            isAdmin
+              ? 'Crea tu primer proyecto Scrum para estructurar el Product Backlog, planificar Sprints y seguir el tablero Kanban.'
+              : 'Solicita a un Administrador que te asigne una membresía en un proyecto para empezar a colaborar.'
+          }
+          action={
+            isAdmin ? (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setCreateOpen(true)}
+                icon={<Plus className="w-3.5 h-3.5" />}
+              >
+                Crear primer proyecto
+              </Button>
+            ) : undefined
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {projects.map((project) => {
+          {projects.map((project, index) => {
             const pct =
               project.totalPoints > 0
                 ? Math.round((project.completedPoints / project.totalPoints) * 100)
                 : 0;
 
             return (
-              <div
+              <motion.div
                 key={project.id}
-                className="rounded-xl bg-[#131B2E] border border-[#222A3D] hover:border-[#3B82F6]/50 transition-colors p-5 flex flex-col justify-between gap-5"
+                initial={shouldReduceMotion ? {} : { opacity: 0, y: 12 }}
+                animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
+                transition={{ duration: 0.18, delay: Math.min(index * 0.05, 0.3) }}
+                className="group rounded-cards bg-carbon border border-graphite hover:border-iris-violet/40 hover:shadow-lg transition-all duration-200 p-5 flex flex-col justify-between gap-5 relative overflow-hidden"
               >
+                {/* Subtle top indicator bar */}
+                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-iris-violet/40 via-signal-teal/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+
                 <div className="space-y-3">
-                  {/* Quiet unboxed metadata line */}
-                  <div className="flex items-center justify-between gap-2 text-[12px] text-[#8D90A0]">
+                  {/* Top metadata */}
+                  <div className="flex items-center justify-between gap-2 text-[12px]">
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-mono font-medium text-[#B4C5FF]">{project.code}</span>
-                      <span aria-hidden="true">·</span>
-                      <span className="truncate">{formatRoleLabel(project.myRole)}</span>
+                      <span className="font-mono font-semibold text-iris-violet bg-iris-violet/10 px-1.5 py-0.5 rounded text-[11px]">
+                        {project.code}
+                      </span>
+                      <span className="text-ash" aria-hidden="true">
+                        ·
+                      </span>
+                      <Badge variant="default" size="sm">
+                        {formatRoleLabel(project.myRole)}
+                      </Badge>
                     </div>
+
                     {isAdmin && (
                       <div className="flex items-center gap-1 shrink-0">
                         <button
                           type="button"
                           onClick={() => setTeamProject(project)}
-                          className="p-1.5 rounded-md text-[#8D90A0] hover:text-white hover:bg-[#1E293B] transition-colors"
+                          className="p-1.5 rounded-inputs text-fog hover:text-paper hover:bg-graphite transition-colors"
                           title="Gestionar equipo y roles"
+                          aria-label="Gestionar equipo y roles"
                         >
-                          <Users className="w-4 h-4" />
+                          <Users className="w-3.5 h-3.5" />
                         </button>
                         <button
                           type="button"
                           onClick={() => setDeleteTarget(project)}
-                          className="p-1.5 rounded-md text-[#8D90A0] hover:text-[#F43F5E] hover:bg-[#1E293B] transition-colors"
+                          className="p-1.5 rounded-inputs text-fog hover:text-coral-red hover:bg-graphite transition-colors"
                           title="Eliminar proyecto"
+                          aria-label="Eliminar proyecto"
                         >
-                          <Trash2 className="w-4 h-4" />
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     )}
                   </div>
 
+                  {/* Project Name & Description */}
                   <button
                     type="button"
                     onClick={() => onOpenProject(project.id, 'backlog')}
-                    className="text-left block w-full group"
+                    className="text-left block w-full group/btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-iris-violet/50 rounded-inputs"
                   >
-                    <h2 className="font-display text-[17px] font-semibold text-white group-hover:text-[#B4C5FF] transition-colors">
+                    <h2 className="font-display text-[17px] font-semibold text-bone group-hover/btn:text-paper group-hover/btn:translate-x-0.5 transition-all">
                       {project.name}
                     </h2>
-                    <p className="mt-1.5 text-[13px] text-[#C3C6D7] leading-5 line-clamp-2">
-                      {project.description || 'Sin descripción registrada.'}
+                    <p className="mt-1 text-[13px] text-mist leading-relaxed line-clamp-2">
+                      {project.description || 'Sin descripción técnica registrada.'}
                     </p>
                   </button>
                 </div>
 
                 {/* Progress & Active Sprint summary */}
-                <div className="space-y-3 pt-4 border-t border-[#1E293B]">
+                <div className="space-y-3 pt-3.5 border-t border-graphite">
                   <div className="flex items-center justify-between text-[12px]">
                     {project.activeSprint ? (
-                      <div className="flex items-center gap-2 min-w-0">
+                      <div className="flex items-center gap-1.5 min-w-0">
                         <SprintStatusText status="ACTIVE" />
-                        <span className="text-[#C3C6D7] truncate">{project.activeSprint.name}</span>
+                        <span className="text-bone truncate font-medium">
+                          {project.activeSprint.name}
+                        </span>
                       </div>
                     ) : (
-                      <span className="text-[#8D90A0]">Sin Sprint activo</span>
+                      <span className="text-fog italic">Sin Sprint activo</span>
                     )}
-                    <span className="font-mono tabular-nums text-[#C3C6D7] shrink-0">
-                      {project.completedPoints}/{project.totalPoints} pts
+                    <span className="font-mono tabular-nums text-fog shrink-0">
+                      <strong className="text-bone">{project.completedPoints}</strong>/
+                      {project.totalPoints} pts
                     </span>
                   </div>
 
-                  <div className="h-1.5 w-full rounded-full bg-[#0B0F17] overflow-hidden">
-                    <div
-                      className="h-full bg-[#2563EB] transition-all duration-300"
-                      style={{ width: `${pct}%` }}
+                  {/* Animated Progress Bar */}
+                  <div className="h-1.5 w-full rounded-pills bg-obsidian overflow-hidden">
+                    <motion.div
+                      initial={shouldReduceMotion ? false : { width: 0 }}
+                      animate={{ width: `${pct}%` }}
+                      transition={{ duration: 0.6, ease: 'easeOut' }}
+                      className="h-full bg-gradient-to-r from-iris-violet to-signal-teal rounded-pills"
                     />
                   </div>
 
+                  {/* Members & Action buttons */}
                   <div className="flex items-center justify-between pt-1">
                     <div className="flex items-center -space-x-1.5">
                       {project.members.slice(0, 5).map((m) =>
-                        m.user ? <UserAvatar key={m.id} name={m.user.fullName} size="xs" /> : null
+                        m.user ? (
+                          <div key={m.id} title={`${m.user.fullName} (${formatRoleLabel(m.scrumRole)})`}>
+                            <UserAvatar name={m.user.fullName} size="xs" />
+                          </div>
+                        ) : null
                       )}
                       {project.members.length === 0 && (
-                        <span className="text-[11px] text-[#64748B]">Sin miembros</span>
+                        <span className="text-[11px] text-ash">Sin miembros</span>
+                      )}
+                      {project.members.length > 5 && (
+                        <span className="w-5 h-5 rounded-full bg-graphite text-[10px] text-fog font-mono flex items-center justify-center border border-carbon">
+                          +{project.members.length - 5}
+                        </span>
                       )}
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
+                      <Button
+                        variant="secondary"
+                        size="xs"
                         onClick={() => onOpenProject(project.id, 'kanban')}
-                        className="px-2.5 py-1.5 rounded-md text-[12px] font-medium text-[#C3C6D7] hover:text-white hover:bg-[#1E293B] transition-colors whitespace-nowrap"
+                        icon={<Kanban className="w-3 h-3" />}
                       >
                         Kanban
-                      </button>
-                      <button
-                        type="button"
+                      </Button>
+                      <Button
+                        variant="primary"
+                        size="xs"
                         onClick={() => onOpenProject(project.id, 'backlog')}
-                        className="inline-flex items-center gap-1 px-3 py-1.5 rounded-md bg-[#1E293B] hover:bg-[#2563EB] text-[12px] font-medium text-white transition-colors whitespace-nowrap"
+                        icon={<ArrowRight className="w-3 h-3" />}
                       >
                         Backlog
-                        <ArrowRight className="w-3.5 h-3.5" />
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
-              </div>
+              </motion.div>
             );
           })}
         </div>
       )}
 
       {/* Create Project Modal */}
-      {createOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px] p-4">
-          <form
-            onSubmit={handleCreateProject}
-            className="w-full max-w-md rounded-xl bg-[#171F33] border border-[#334155] p-6 shadow-2xl space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="font-display text-lg font-semibold text-white">Crear proyecto</h2>
-              <button
-                type="button"
-                onClick={() => setCreateOpen(false)}
-                className="text-[#8D90A0] hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div>
-              <label className="block text-[12px] font-medium text-[#C3C6D7] mb-1.5">
-                Nombre del proyecto *
-              </label>
-              <input
-                type="text"
-                required
-                value={projName}
-                onChange={(e) => setProjName(e.target.value)}
-                placeholder="Ej. Pasarela de Pagos Instantáneos"
-                className="w-full px-3.5 py-2 bg-[#0F172A] border border-[#334155] rounded-lg text-[13px] text-white focus:outline-none focus:border-[#3B82F6]"
-              />
-            </div>
-            <div>
-              <label className="block text-[12px] font-medium text-[#C3C6D7] mb-1.5">
-                Código prefijo (opcional)
-              </label>
-              <input
-                type="text"
-                maxLength={5}
-                value={projCode}
-                onChange={(e) => setProjCode(e.target.value.toUpperCase())}
-                placeholder="PPI"
-                className="w-full px-3.5 py-2 bg-[#0F172A] border border-[#334155] rounded-lg text-[13px] font-mono text-white focus:outline-none focus:border-[#3B82F6]"
-              />
-            </div>
-            <div>
-              <label className="block text-[12px] font-medium text-[#C3C6D7] mb-1.5">
-                Descripción
-              </label>
-              <textarea
-                rows={3}
-                value={projDesc}
-                onChange={(e) => setProjDesc(e.target.value)}
-                placeholder="Objetivo técnico y alcance del producto..."
-                className="w-full px-3.5 py-2 bg-[#0F172A] border border-[#334155] rounded-lg text-[13px] text-white focus:outline-none focus:border-[#3B82F6]"
-              />
-            </div>
-            <div className="flex justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setCreateOpen(false)}
-                className="px-4 py-2 text-[13px] text-[#C3C6D7] hover:text-white rounded-lg hover:bg-[#222A3D]"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={savingProject}
-                className="px-4 py-2 text-[13px] font-medium bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg disabled:opacity-60"
-              >
-                {savingProject ? 'Guardando...' : 'Guardar'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+      <Modal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title="Crear nuevo proyecto Scrum"
+        description="Define el nombre, código y descripción del espacio de trabajo."
+        size="md"
+      >
+        <form onSubmit={handleCreateProject} className="space-y-4">
+          <Input
+            label="Nombre del proyecto"
+            required
+            value={projName}
+            onChange={(e) => setProjName(e.target.value)}
+            placeholder="Ej. Pasarela de Pagos Móvil"
+          />
+          <Input
+            label="Código prefijo (opcional)"
+            maxLength={5}
+            value={projCode}
+            onChange={(e) => setProjCode(e.target.value.toUpperCase())}
+            placeholder="Ej. PPM"
+            hint="Código de 2 a 5 letras que identificará las historias y tareas."
+          />
+          <Textarea
+            label="Descripción del proyecto"
+            rows={3}
+            value={projDesc}
+            onChange={(e) => setProjDesc(e.target.value)}
+            placeholder="Objetivo y alcance del producto a construir..."
+          />
+          <div className="flex justify-end gap-2.5 pt-2 border-t border-graphite">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setCreateOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              loading={savingProject}
+            >
+              Crear proyecto
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
       {/* Team Memberships Modal (RF-03) */}
       {currentTeamProject && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px] p-4">
-          <div className="w-full max-w-lg rounded-xl bg-[#171F33] border border-[#334155] p-6 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="font-display text-lg font-semibold text-white">
-                  Equipo y Roles · {currentTeamProject.name}
-                </h2>
-                <p className="text-[12px] text-[#8D90A0]">
-                  Cada usuario mantiene un único rol Scrum activo por proyecto.
-                </p>
+        <Modal
+          open={Boolean(currentTeamProject)}
+          onClose={() => setTeamProject(null)}
+          title={`Equipo y Roles · ${currentTeamProject.name}`}
+          description="Cada usuario mantiene un único rol Scrum activo en este proyecto."
+          size="lg"
+        >
+          <div className="space-y-4">
+            <form onSubmit={handleSaveMember} className="flex flex-col sm:flex-row gap-2.5 items-end">
+              <div className="flex-1 w-full">
+                <Select
+                  label="Seleccionar usuario"
+                  value={selectedUserId}
+                  onChange={(e) =>
+                    setSelectedUserId(e.target.value ? Number(e.target.value) : '')
+                  }
+                  required
+                >
+                  <option value="">Seleccionar usuario del sistema...</option>
+                  {users.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.fullName} ({u.email})
+                    </option>
+                  ))}
+                </Select>
               </div>
-              <button
-                type="button"
-                onClick={() => setTeamProject(null)}
-                className="text-[#8D90A0] hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
 
-            <form onSubmit={handleSaveMember} className="flex flex-col sm:flex-row gap-2.5">
-              <select
-                value={selectedUserId}
-                onChange={(e) => setSelectedUserId(e.target.value ? Number(e.target.value) : '')}
-                required
-                className="flex-1 px-3 py-2 bg-[#0F172A] border border-[#334155] rounded-lg text-[13px] text-white focus:outline-none focus:border-[#3B82F6]"
-              >
-                <option value="">Seleccionar usuario...</option>
-                {users.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.fullName} ({u.email})
-                  </option>
-                ))}
-              </select>
-              <select
-                value={selectedRole}
-                onChange={(e) => setSelectedRole(e.target.value as ScrumRole)}
-                className="px-3 py-2 bg-[#0F172A] border border-[#334155] rounded-lg text-[13px] text-white focus:outline-none focus:border-[#3B82F6]"
-              >
-                <option value="PRODUCT_OWNER">Product Owner</option>
-                <option value="SCRUM_MASTER">Scrum Master</option>
-                <option value="DEVELOPER">Developer</option>
-              </select>
-              <button
+              <div className="w-full sm:w-48">
+                <Select
+                  label="Rol Scrum"
+                  value={selectedRole}
+                  onChange={(e) => setSelectedRole(e.target.value as ScrumRole)}
+                >
+                  <option value="PRODUCT_OWNER">Product Owner</option>
+                  <option value="SCRUM_MASTER">Scrum Master</option>
+                  <option value="DEVELOPER">Developer</option>
+                </Select>
+              </div>
+
+              <Button
                 type="submit"
-                disabled={savingMember || !selectedUserId}
-                className="px-4 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-[13px] font-medium rounded-lg disabled:opacity-50 whitespace-nowrap"
+                variant="primary"
+                size="md"
+                loading={savingMember}
+                disabled={!selectedUserId}
               >
                 Asignar
-              </button>
+              </Button>
             </form>
 
-            <div className="divide-y divide-[#222A3D] max-h-64 overflow-y-auto border-t border-[#222A3D]">
+            <div className="divide-y divide-graphite max-h-64 overflow-y-auto border-t border-graphite pt-1">
               {currentTeamProject.members.length === 0 ? (
-                <p className="py-6 text-center text-[12px] text-[#8D90A0]">
+                <p className="py-6 text-center text-[12px] text-fog">
                   No hay miembros asignados a este proyecto todavía.
                 </p>
               ) : (
@@ -515,21 +654,22 @@ export function DashboardView({
                     <div className="flex items-center gap-2.5 min-w-0">
                       <UserAvatar name={m.user?.fullName || 'U'} size="sm" />
                       <div className="min-w-0">
-                        <p className="text-[13px] font-medium text-white truncate">
+                        <p className="text-[13px] font-medium text-bone truncate">
                           {m.user?.fullName}
                         </p>
-                        <p className="text-[11px] text-[#8D90A0] truncate">{m.user?.email}</p>
+                        <p className="text-[11px] text-fog truncate">{m.user?.email}</p>
                       </div>
                     </div>
                     <div className="flex items-center gap-3 shrink-0">
-                      <span className="text-[12px] text-[#B4C5FF]">
+                      <Badge variant="purple" size="sm">
                         {formatRoleLabel(m.scrumRole)}
-                      </span>
+                      </Badge>
                       <button
                         type="button"
                         onClick={() => handleRemoveMember(currentTeamProject.id, m.userId)}
-                        className="text-[#8D90A0] hover:text-[#F43F5E] transition-colors"
+                        className="p-1 rounded text-fog hover:text-coral-red hover:bg-graphite transition-colors"
                         title="Remover del proyecto"
+                        aria-label="Remover del proyecto"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -539,102 +679,78 @@ export function DashboardView({
               )}
             </div>
           </div>
-        </div>
+        </Modal>
       )}
 
       {/* Register User Modal (RF-01 Admin) */}
-      {userModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px] p-4">
-          <form
-            onSubmit={handleRegisterUser}
-            className="w-full max-w-md rounded-xl bg-[#171F33] border border-[#334155] p-6 shadow-2xl space-y-4"
+      <Modal
+        open={userModalOpen}
+        onClose={() => setUserModalOpen(false)}
+        title="Registrar nuevo usuario"
+        description="Crea una cuenta en Agile Velocity con credenciales de acceso iniciales."
+        size="md"
+      >
+        <form onSubmit={handleRegisterUser} className="space-y-4">
+          <Input
+            label="Nombre completo"
+            required
+            value={newUserName}
+            onChange={(e) => setNewUserName(e.target.value)}
+            placeholder="Ej. Alan Turing"
+          />
+          <Input
+            label="Correo electrónico"
+            type="email"
+            required
+            value={newUserEmail}
+            onChange={(e) => setNewUserEmail(e.target.value)}
+            placeholder="alan@velocity.dev"
+          />
+          <Input
+            label="Contraseña inicial (mín. 8 caracteres)"
+            type="password"
+            required
+            minLength={8}
+            value={newUserPass}
+            onChange={(e) => setNewUserPass(e.target.value)}
+            placeholder="••••••••"
+          />
+          <Select
+            label="Rol global en la plataforma"
+            value={newUserRole}
+            onChange={(e) => setNewUserRole(e.target.value as 'USER' | 'ADMIN')}
           >
-            <div className="flex items-center justify-between">
-              <h2 className="font-display text-lg font-semibold text-white">Registrar usuario</h2>
-              <button
-                type="button"
-                onClick={() => setUserModalOpen(false)}
-                className="text-[#8D90A0] hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div>
-              <label className="block text-[12px] font-medium text-[#C3C6D7] mb-1.5">
-                Nombre completo *
-              </label>
-              <input
-                type="text"
-                required
-                value={newUserName}
-                onChange={(e) => setNewUserName(e.target.value)}
-                className="w-full px-3.5 py-2 bg-[#0F172A] border border-[#334155] rounded-lg text-[13px] text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-[12px] font-medium text-[#C3C6D7] mb-1.5">
-                Correo electrónico *
-              </label>
-              <input
-                type="email"
-                required
-                value={newUserEmail}
-                onChange={(e) => setNewUserEmail(e.target.value)}
-                className="w-full px-3.5 py-2 bg-[#0F172A] border border-[#334155] rounded-lg text-[13px] text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-[12px] font-medium text-[#C3C6D7] mb-1.5">
-                Contraseña temporal (mín. 8 caracteres) *
-              </label>
-              <input
-                type="password"
-                required
-                minLength={8}
-                value={newUserPass}
-                onChange={(e) => setNewUserPass(e.target.value)}
-                className="w-full px-3.5 py-2 bg-[#0F172A] border border-[#334155] rounded-lg text-[13px] text-white"
-              />
-            </div>
-            <div>
-              <label className="block text-[12px] font-medium text-[#C3C6D7] mb-1.5">
-                Rol global
-              </label>
-              <select
-                value={newUserRole}
-                onChange={(e) => setNewUserRole(e.target.value as 'USER' | 'ADMIN')}
-                className="w-full px-3.5 py-2 bg-[#0F172A] border border-[#334155] rounded-lg text-[13px] text-white"
-              >
-                <option value="USER">Usuario estándar (USER)</option>
-                <option value="ADMIN">Administrador (ADMIN)</option>
-              </select>
-            </div>
-            <div className="flex justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setUserModalOpen(false)}
-                className="px-4 py-2 text-[13px] text-[#C3C6D7] hover:text-white rounded-lg hover:bg-[#222A3D]"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={savingUser}
-                className="px-4 py-2 text-[13px] font-medium bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg disabled:opacity-60"
-              >
-                {savingUser ? 'Registrando...' : 'Registrar'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+            <option value="USER">Usuario estándar (USER)</option>
+            <option value="ADMIN">Administrador (ADMIN)</option>
+          </Select>
+          <div className="flex justify-end gap-2.5 pt-2 border-t border-graphite">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setUserModalOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              loading={savingUser}
+            >
+              Registrar usuario
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
-      {/* Delete Project Confirmation (RF-02) */}
+      {/* Delete Project Confirmation Dialog */}
       <ConfirmDialog
         open={Boolean(deleteTarget)}
         title={`Eliminar ${deleteTarget?.name}`}
-        description="Esta acción eliminará permanentemente el proyecto, sus Sprints, historias de usuario y tareas técnicas. ¿Deseas continuar?"
+        description="Esta acción eliminará permanentemente el proyecto, sus Sprints, historias de usuario y tareas técnicas asociadas. ¿Deseas continuar?"
         confirmLabel="Eliminar proyecto"
+        variant="danger"
         loading={deleting}
         onConfirm={handleDeleteProject}
         onCancel={() => setDeleteTarget(null)}
