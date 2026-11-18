@@ -8,3 +8,15 @@ data/
 .fleet/
 .env*
 !.env.example
+
+# Java & Maven (Backend Spring Boot)
+target/
+backend/target/
+*.class
+*.jar
+*.war
+.idea/
+*.iml
+.project
+.classpath
+.settings/

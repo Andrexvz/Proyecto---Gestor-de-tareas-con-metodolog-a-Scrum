@@ -1,0 +1,75 @@
+package com.sena.scrum.service;
+
+import com.sena.scrum.exception.BusinessRuleException;
+import com.sena.scrum.exception.ResourceNotFoundException;
+import com.sena.scrum.model.dto.AuthResponse;
+import com.sena.scrum.model.dto.LoginRequest;
+import com.sena.scrum.model.dto.RegisterRequest;
+import com.sena.scrum.model.entity.User;
+import com.sena.scrum.repository.UserRepository;
+import com.sena.scrum.security.JwtService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class AuthService {
+
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
+    private final AuthenticationManager authenticationManager;
+
+    public AuthResponse login(LoginRequest request) {
+        authenticationManager.authenticate(
+                new UsernamePasswordAuthenticationToken(request.getEmail(), request.getPassword())
+        );
+
+        User user = userRepository.findByEmail(request.getEmail())
+                .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con correo: " + request.getEmail()));
+
+        String token = jwtService.generateToken(user);
+
+        return AuthResponse.builder()
+                .token(token)
+                .type("Bearer")
+                .id(user.getId())
+                .email(user.getEmail())
+                .fullName(user.getFullName())
+                .role(user.getRole())
+                .title(user.getTitle())
+                .build();
+    }
+
+    @Transactional
+    public AuthResponse register(RegisterRequest request) {
+        if (userRepository.existsByEmail(request.getEmail())) {
+            throw new BusinessRuleException("Ya existe una cuenta registrada con el correo: " + request.getEmail());
+        }
+
+        User user = User.builder()
+                .email(request.getEmail().toLowerCase().trim())
+                .fullName(request.getFullName().trim())
+                .passwordHash(passwordEncoder.encode(request.getPassword()))
+                .role(request.getRole())
+                .title(request.getTitle())
+                .build();
+
+        User savedUser = userRepository.save(user);
+        String token = jwtService.generateToken(savedUser);
+
+        return AuthResponse.builder()
+                .token(token)
+                .type("Bearer")
+                .id(savedUser.getId())
+                .email(savedUser.getEmail())
+                .fullName(savedUser.getFullName())
+                .role(savedUser.getRole())
+                .title(savedUser.getTitle())
+                .build();
+    }
+}

@@ -1,0 +1,37 @@
+services:
+  scrum_task_db:
+    image: postgres:15-alpine
+    container_name: scrum_task_db
+    restart: always
+    environment:
+      POSTGRES_DB: scrum_manager_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d scrum_manager_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: scrum_backend_app
+    restart: on-failure
+    depends_on:
+      scrum_task_db:
+        condition: service_healthy
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://scrum_task_db:5432/scrum_manager_db
+      SPRING_DATASOURCE_USERNAME: postgres
+      SPRING_DATASOURCE_PASSWORD: password123
+    ports:
+      - "8080:8080"
+
+volumes:
+  postgres_data:
