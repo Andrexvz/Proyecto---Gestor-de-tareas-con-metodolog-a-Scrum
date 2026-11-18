@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Sparkles,
   Layers,
@@ -196,6 +196,41 @@ export function OnboardingModal({ open, user, onClose }: OnboardingModalProps) {
     setCurrentStep((prev) => Math.max(prev - 1, 0));
   };
 
+  // Keyboard accessibility (ArrowRight -> Next, ArrowLeft -> Prev, Escape -> Close/Skip)
+  useEffect(() => {
+    if (!open) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        handleNext();
+      } else if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        handlePrev();
+      } else if (e.key === 'Escape') {
+        e.preventDefault();
+        markCompleted();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [open, currentStep, isLast]);
+
+  // Role-adapted guidance
+  const roleGuidance = useMemo(() => {
+    if (!user) return null;
+    if (user.globalRole === 'ADMIN') {
+      return 'Gobernanza: Como Administrador, tienes control total sobre la creación de proyectos y la gobernanza del equipo.';
+    }
+    const titleLower = (user.title || '').toLowerCase();
+    if (titleLower.includes('product owner') || titleLower.includes('po')) {
+      return 'Rol Product Owner: Tu principal foco es maximizar el valor del producto, priorizar el Backlog y estructurar historias.';
+    }
+    if (titleLower.includes('scrum master') || titleLower.includes('sm')) {
+      return 'Rol Scrum Master: Tu objetivo es remover impedimentos, facilitar la planificación de Sprints y supervisar la velocidad.';
+    }
+    return 'Rol Developer: Tu centro de acción es el Tablero Kanban, colaborando en tareas técnicas y cierre continuo de historias.';
+  }, [user]);
+
   if (!open) return null;
 
   return (
@@ -296,6 +331,13 @@ export function OnboardingModal({ open, user, onClose }: OnboardingModalProps) {
                 <div className="p-3 rounded-inputs bg-iris-violet/10 border border-iris-violet/25 text-[12px] text-lavender flex items-start gap-2">
                   <span className="font-semibold text-paper shrink-0">Consejo ágil:</span>
                   <span className="leading-snug">{step.tip}</span>
+                </div>
+              )}
+
+              {roleGuidance && (
+                <div className="p-2.5 rounded-inputs bg-signal-teal/10 border border-signal-teal/20 text-[11px] text-signal-teal flex items-center gap-2">
+                  <span className="font-semibold shrink-0">Tu perfil:</span>
+                  <span className="truncate">{roleGuidance}</span>
                 </div>
               )}
             </motion.div>

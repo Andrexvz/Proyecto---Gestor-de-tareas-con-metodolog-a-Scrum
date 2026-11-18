@@ -12,6 +12,38 @@ const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'agile-velocity-scrum-dev-secret-2026-hmac256';
 const AI_TIMEOUT_MS = 8000;
 
+if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
+  console.warn('[SECURITY WARNING] In production, JWT_SECRET should be defined in environment variables.');
+}
+
+// In-memory brute force protection tracking
+interface RateLimitBucket {
+  count: number;
+  resetAt: number;
+}
+const loginAttempts = new Map<string, RateLimitBucket>();
+const forgotAttempts = new Map<string, RateLimitBucket>();
+
+function checkRateLimit(
+  map: Map<string, RateLimitBucket>,
+  key: string,
+  maxAttempts: number,
+  windowMs: number
+): { allowed: boolean; remainingSec: number } {
+  const now = Date.now();
+  const bucket = map.get(key);
+  if (!bucket || bucket.resetAt < now) {
+    map.set(key, { count: 1, resetAt: now + windowMs });
+    return { allowed: true, remainingSec: Math.ceil(windowMs / 1000) };
+  }
+  if (bucket.count >= maxAttempts) {
+    const remainingSec = Math.max(1, Math.ceil((bucket.resetAt - now) / 1000));
+    return { allowed: false, remainingSec };
+  }
+  bucket.count++;
+  return { allowed: true, remainingSec: Math.ceil((bucket.resetAt - now) / 1000) };
+}
+
 interface AuthRequest extends Request {
   user?: StoredUser;
 }
@@ -81,6 +113,15 @@ async function startServer() {
   const app = express();
   app.use(express.json());
 
+  // Security Headers Middleware (OWASP recommended defense-in-depth)
+  app.use((_req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('X-XSS-Protection', '1; mode=block');
+    res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    next();
+  });
+
   // Healthcheck
   app.get('/api/v1/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -88,6 +129,16 @@ async function startServer() {
 
   // --- AUTH ---
   app.post('/api/v1/auth/login', (req, res) => {
+    const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
+    const rateCheck = checkRateLimit(loginAttempts, clientIp, 10, 15 * 60 * 1000);
+    if (!rateCheck.allowed) {
+      res.setHeader('Retry-After', String(rateCheck.remainingSec));
+      res.status(429).json({
+        error: `Demasiados intentos fallidos. Por seguridad, espera ${Math.ceil(rateCheck.remainingSec / 60)} minutos antes de reintentar.`,
+      });
+      return;
+    }
+
     const { email, password } = req.body ?? {};
     if (!email || !password) {
       res.status(400).json({ error: 'Ingresa tu correo y contraseña' });
@@ -98,6 +149,10 @@ async function startServer() {
       res.status(401).json({ error: 'Credenciales inválidas. Verifica tu correo y contraseña' });
       return;
     }
+
+    // Reset rate limiter on successful authentication
+    loginAttempts.delete(clientIp);
+
     const token = jwt.sign({ userId: user.id, role: user.globalRole }, JWT_SECRET, {
       expiresIn: '24h',
     });
@@ -112,11 +167,23 @@ async function startServer() {
   });
 
   app.post('/api/v1/auth/forgot-password', (req, res) => {
+    const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
     const { email } = req.body ?? {};
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) {
       res.status(400).json({ error: 'Ingresa un correo electrónico válido' });
       return;
     }
+
+    const rateKey = `${clientIp}_${String(email).toLowerCase()}`;
+    const rateCheck = checkRateLimit(forgotAttempts, rateKey, 5, 15 * 60 * 1000);
+    if (!rateCheck.allowed) {
+      res.setHeader('Retry-After', String(rateCheck.remainingSec));
+      res.status(429).json({
+        error: `Demasiadas solicitudes de recuperación de contraseña. Por favor espera ${Math.ceil(rateCheck.remainingSec / 60)} minutos.`,
+      });
+      return;
+    }
+
     const token = store.createResetToken(String(email));
     // RF-16 neutral response; demoToken is included strictly for local evaluation when present
     res.json({

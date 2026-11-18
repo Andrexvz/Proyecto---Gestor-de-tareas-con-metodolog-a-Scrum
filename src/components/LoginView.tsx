@@ -72,6 +72,15 @@ export function LoginView() {
   const [resetFeedback, setResetFeedback] = useState('');
   const [demoResetToken, setDemoResetToken] = useState('');
 
+  // Controlled evaluation profiles: only rendered on localhost/dev or explicit demo flag
+  const isDemoEnvironment =
+    typeof window !== 'undefined'
+      ? window.location.hostname === 'localhost' ||
+        window.location.hostname === '127.0.0.1' ||
+        import.meta.env.DEV ||
+        import.meta.env.VITE_ENABLE_DEMO === 'true'
+      : true;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMsg('');
@@ -90,6 +99,7 @@ export function LoginView() {
   };
 
   const handleQuickLogin = async (demoEmail: string) => {
+    if (!isDemoEnvironment) return;
     setEmail(demoEmail);
     setPassword('Password123!');
     setErrorMsg('');
@@ -359,39 +369,41 @@ export function LoginView() {
                 </Button>
               </form>
 
-              {/* Quick Evaluation Profiles */}
-              <div className="pt-5 border-t border-graphite space-y-3">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1.5 text-[12px] font-semibold text-bone">
-                    <Zap className="w-3.5 h-3.5 text-signal-teal" />
-                    <span>Acceso rápido de evaluación</span>
+              {/* Quick Evaluation Profiles (Development / Demo Environment Only) */}
+              {isDemoEnvironment && (
+                <div className="pt-5 border-t border-graphite space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5 text-[12px] font-semibold text-bone">
+                      <Zap className="w-3.5 h-3.5 text-signal-teal" />
+                      <span>Acceso rápido de evaluación</span>
+                    </div>
+                    <span className="text-[11px] text-fog">Entorno Demo · 1 clic</span>
                   </div>
-                  <span className="text-[11px] text-fog">1 clic para autenticar</span>
-                </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                  {DEMO_ACCOUNTS.map((acc) => (
-                    <button
-                      key={acc.email}
-                      type="button"
-                      disabled={submitting}
-                      onClick={() => handleQuickLogin(acc.email)}
-                      className="text-left p-3 rounded-cards bg-obsidian hover:bg-graphite/40 border border-graphite hover:border-iris-violet/40 transition-all disabled:opacity-60 shadow-subtle group focus:outline-none focus:ring-1 focus:ring-iris-violet"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="text-[12px] font-semibold text-bone group-hover:text-paper transition-colors">
-                          {acc.label}
-                        </span>
-                        <span className="px-1.5 py-0.5 rounded-pills bg-graphite/80 text-[10px] font-mono text-lavender group-hover:border group-hover:border-iris-violet/40">
-                          {acc.badge}
-                        </span>
-                      </div>
-                      <p className="mt-1 text-[11px] text-signal-teal truncate">{acc.name}</p>
-                      <p className="mt-0.5 text-[10px] text-fog truncate">{acc.scope}</p>
-                    </button>
-                  ))}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    {DEMO_ACCOUNTS.map((acc) => (
+                      <button
+                        key={acc.email}
+                        type="button"
+                        disabled={submitting}
+                        onClick={() => handleQuickLogin(acc.email)}
+                        className="text-left p-3 rounded-cards bg-obsidian hover:bg-graphite/40 border border-graphite hover:border-iris-violet/40 transition-all disabled:opacity-60 shadow-subtle group focus:outline-none focus:ring-1 focus:ring-iris-violet"
+                      >
+                        <div className="flex items-center justify-between">
+                          <span className="text-[12px] font-semibold text-bone group-hover:text-paper transition-colors">
+                            {acc.label}
+                          </span>
+                          <span className="px-1.5 py-0.5 rounded-pills bg-graphite/80 text-[10px] font-mono text-lavender group-hover:border group-hover:border-iris-violet/40">
+                            {acc.badge}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-[11px] text-signal-teal truncate">{acc.name}</p>
+                        <p className="mt-0.5 text-[10px] text-fog truncate">{acc.scope}</p>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </div>
+              )}
             </>
           ) : resetMode === 'request' ? (
             <motion.form

@@ -1,5 +1,6 @@
 import fs from 'fs';
 import path from 'path';
+import crypto from 'crypto';
 import bcrypt from 'bcryptjs';
 import type {
   AppNotification,
@@ -1150,10 +1151,18 @@ class ScrumStore {
   public createResetToken(email: string): string | null {
     const user = this.findUserByEmail(email);
     if (!user) return null;
-    const token =
-      Math.random().toString(36).slice(2, 10).toUpperCase() +
-      '-' +
-      Math.random().toString(36).slice(2, 10).toUpperCase();
+
+    // Invalidate any prior active tokens for this user
+    for (const t of this.db.resetTokens) {
+      if (t.userId === user.id && !t.used) {
+        t.used = true;
+      }
+    }
+
+    // Cryptographically secure token (uppercase hex format XXXX-XXXX-XXXX-XXXX)
+    const raw = crypto.randomBytes(8).toString('hex').toUpperCase();
+    const token = `${raw.slice(0, 4)}-${raw.slice(4, 8)}-${raw.slice(8, 12)}-${raw.slice(12, 16)}`;
+
     const id = ++this.db.counters.resetToken;
     this.db.resetTokens.push({
       id,
