@@ -7,13 +7,26 @@ import {
   ArrowLeft,
   Calendar,
   Kanban,
-  X,
   CheckCircle2,
   AlertTriangle,
+  ChevronDown,
+  ChevronUp,
+  Target,
+  Sparkles,
+  Layers,
 } from 'lucide-react';
+import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { apiFetch } from '../lib/api';
 import { useToast } from '../context/ToastContext';
 import { PrioritySignal, SprintStatusText } from './UIHelpers';
+import {
+  Button,
+  Input,
+  Textarea,
+  Modal,
+  Badge,
+  EmptyState,
+} from './ui';
 import type { ProjectSummary, Sprint, SprintCloseSummary, UserStory } from '../types/scrum';
 
 interface SprintsViewProps {
@@ -32,6 +45,7 @@ export function SprintsView({
   onRefresh,
 }: SprintsViewProps) {
   const { showToast } = useToast();
+  const shouldReduceMotion = useReducedMotion();
 
   const canManageSprints =
     project.myRole === 'ADMIN' ||
@@ -47,12 +61,31 @@ export function SprintsView({
     defaultTargetId
   );
 
+  // Expanded sprints state for accordion
+  const [expandedSprintIds, setExpandedSprintIds] = useState<Record<number, boolean>>(() => {
+    const init: Record<number, boolean> = {};
+    for (const s of sprints) {
+      if (s.status === 'ACTIVE' || s.status === 'PLANNING') {
+        init[s.id] = true;
+      }
+    }
+    return init;
+  });
+
+  const toggleSprintExpanded = (id: number) => {
+    setExpandedSprintIds((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
   // Create Sprint modal
   const [createOpen, setCreateOpen] = useState(false);
   const [sprintName, setSprintName] = useState('');
   const [sprintGoal, setSprintGoal] = useState('');
-  const [startDate, setStartDate] = useState('2026-11-18');
-  const [endDate, setEndDate] = useState('2026-12-02');
+  const [startDate, setStartDate] = useState(new Date().toISOString().slice(0, 10));
+  const [endDate, setEndDate] = useState(() => {
+    const d = new Date();
+    d.setDate(d.getDate() + 14);
+    return d.toISOString().slice(0, 10);
+  });
   const [creating, setCreating] = useState(false);
   const [dateError, setDateError] = useState('');
 
@@ -67,7 +100,8 @@ export function SprintsView({
   );
 
   const effectiveTargetId =
-    selectedTargetSprintId && sprints.some((s) => s.id === selectedTargetSprintId && s.status !== 'CLOSED')
+    selectedTargetSprintId &&
+    sprints.some((s) => s.id === selectedTargetSprintId && s.status !== 'CLOSED')
       ? selectedTargetSprintId
       : sprints.find((s) => s.status === 'PLANNING')?.id ?? activeSprint?.id ?? null;
 
@@ -75,7 +109,7 @@ export function SprintsView({
     e.preventDefault();
     setDateError('');
     if (new Date(endDate) <= new Date(startDate)) {
-      setDateError('La fecha de finalización debe ser estrictamente posterior a la fecha de inicio');
+      setDateError('La fecha de finalización debe ser estrictamente posterior a la de inicio');
       return;
     }
     setCreating(true);
@@ -83,8 +117,8 @@ export function SprintsView({
       const res = await apiFetch<{ sprint: Sprint }>(`/api/v1/projects/${project.id}/sprints`, {
         method: 'POST',
         body: JSON.stringify({
-          name: sprintName,
-          goal: sprintGoal,
+          name: sprintName.trim(),
+          goal: sprintGoal.trim(),
           startDate,
           endDate,
         }),
@@ -94,6 +128,7 @@ export function SprintsView({
       setSprintName('');
       setSprintGoal('');
       setSelectedTargetSprintId(res.sprint.id);
+      setExpandedSprintIds((prev) => ({ ...prev, [res.sprint.id]: true }));
       await onRefresh();
     } catch (err: any) {
       showToast(err?.message || 'Error al crear Sprint', 'error');
@@ -109,7 +144,9 @@ export function SprintsView({
         body: JSON.stringify({ sprintId: targetSprintId }),
       });
       showToast(
-        targetSprintId ? 'Historia agregada al Sprint Backlog' : 'Historia devuelta al Product Backlog',
+        targetSprintId
+          ? 'Historia asignada al Sprint'
+          : 'Historia devuelta al Product Backlog',
         'success'
       );
       await onRefresh();
@@ -121,7 +158,7 @@ export function SprintsView({
   const handleStartSprint = async (sprintId: number) => {
     try {
       await apiFetch(`/api/v1/sprints/${sprintId}/start`, { method: 'POST' });
-      showToast('Sprint iniciado correctamente', 'success');
+      showToast('Sprint iniciado exitosamente', 'success');
       await onRefresh();
     } catch (err: any) {
       showToast(err?.message || 'No se pudo iniciar el Sprint', 'error');
@@ -157,85 +194,111 @@ export function SprintsView({
   }, [closeModalSprint, stories]);
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-6">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-display text-2xl font-semibold text-white tracking-tight">
-            Planificación de Sprints
-          </h1>
-          <p className="mt-1 text-[13px] text-[#8D90A0]">
-            Organiza iteraciones, asigna historias del Product Backlog y controla el ciclo de vida del Sprint.
+          <div className="flex items-center gap-2.5">
+            <h1 className="font-display text-2xl font-semibold text-bone tracking-tight">
+              Planificación y Gestión de Sprints
+            </h1>
+            <Badge variant="purple" shape="pill">
+              {project.code}
+            </Badge>
+          </div>
+          <p className="mt-1 text-[13px] text-fog leading-relaxed">
+            {project.name} · Estructura iteraciones temporales, asigna historias del Product Backlog y finaliza Sprints con consolidación de métricas.
           </p>
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
           {activeSprint && (
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={onGoToKanban}
-              className="inline-flex items-center gap-2 px-3.5 py-2 rounded-lg bg-[#131B2E] hover:bg-[#1E293B] border border-[#334155] text-[13px] font-medium text-[#4EDEA3] transition-colors whitespace-nowrap"
+              icon={<Kanban className="w-3.5 h-3.5 text-signal-teal" />}
             >
-              <Kanban className="w-4 h-4" />
-              Ir al Tablero Kanban
-            </button>
+              Ir a Kanban
+            </Button>
           )}
           {canManageSprints && (
-            <button
-              type="button"
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => setCreateOpen(true)}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-[#2563EB] hover:bg-[#1D4ED8] text-[13px] font-medium text-white transition-colors whitespace-nowrap"
+              icon={<Plus className="w-3.5 h-3.5" />}
             >
-              <Plus className="w-4 h-4" />
               Crear Sprint
-            </button>
+            </Button>
           )}
         </div>
       </div>
 
       {/* Sprint Closure Summary Banner (Step 6 User Flow) */}
       {closeSummary && (
-        <div className="rounded-xl bg-[#131B2E] border border-[#10B981]/40 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-          <div className="flex items-start gap-3">
-            <CheckCircle2 className="w-5 h-5 text-[#4EDEA3] shrink-0 mt-0.5" />
+        <motion.div
+          initial={shouldReduceMotion ? {} : { opacity: 0, y: -10 }}
+          animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
+          className="rounded-cards bg-carbon border border-pulse-green/40 p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xl relative overflow-hidden"
+        >
+          <div className="absolute top-0 left-0 bottom-0 w-1 bg-pulse-green" />
+          <div className="flex items-start gap-3 pl-1">
+            <div className="p-2 rounded-md bg-pulse-green/10 text-pulse-green mt-0.5">
+              <CheckCircle2 className="w-5 h-5" />
+            </div>
             <div>
-              <h2 className="font-display text-[15px] font-semibold text-white">
-                Resumen de cierre · {closeSummary.sprintName}
+              <h2 className="font-display text-[15px] font-semibold text-bone">
+                Resumen de cierre consolidado · {closeSummary.sprintName}
               </h2>
-              <p className="mt-1 text-[13px] text-[#C3C6D7]">
-                Historias completadas:{' '}
-                <span className="font-mono tabular-nums text-white">
-                  {closeSummary.completedStoriesCount}
-                </span>{' '}
-                · Devueltas al Backlog:{' '}
-                <span className="font-mono tabular-nums text-white">
-                  {closeSummary.returnedStoriesCount}
-                </span>{' '}
-                · Story Points entregados:{' '}
-                <span className="font-mono tabular-nums text-[#4EDEA3]">
-                  {closeSummary.deliveredPoints} / {closeSummary.plannedPoints}
+              <div className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13px] text-mist">
+                <span>
+                  Historias completadas:{' '}
+                  <strong className="font-mono text-pulse-green">
+                    {closeSummary.completedStoriesCount}
+                  </strong>
                 </span>
-              </p>
+                <span>·</span>
+                <span>
+                  Devueltas al Backlog:{' '}
+                  <strong className="font-mono text-amber-400">
+                    {closeSummary.returnedStoriesCount}
+                  </strong>
+                </span>
+                <span>·</span>
+                <span>
+                  Story Points entregados:{' '}
+                  <strong className="font-mono text-pulse-green">
+                    {closeSummary.deliveredPoints} / {closeSummary.plannedPoints} pts
+                  </strong>
+                </span>
+              </div>
             </div>
           </div>
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="xs"
             onClick={() => setCloseSummary(null)}
-            className="text-[12px] text-[#8D90A0] hover:text-white self-end sm:self-center"
           >
-            Ocultar
-          </button>
-        </div>
+            Ocultar resumen
+          </Button>
+        </motion.div>
       )}
 
       {/* Dual Pane Planning Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
-        {/* Left: Product Backlog */}
-        <section className="lg:col-span-5 rounded-xl bg-[#0F172A] border border-[#1E293B] overflow-hidden">
-          <div className="px-4 py-3.5 border-b border-[#1E293B] flex items-center justify-between gap-3">
+        {/* Left Pane: Product Backlog Pool */}
+        <section className="lg:col-span-5 rounded-cards bg-carbon border border-graphite overflow-hidden shadow-subtle">
+          <div className="px-4 py-3.5 border-b border-graphite flex items-center justify-between gap-3">
             <div>
-              <h2 className="text-[14px] font-semibold text-white">Product Backlog</h2>
-              <p className="text-[12px] text-[#8D90A0]">
-                <span className="font-mono tabular-nums">{backlogStories.length}</span> historias disponibles
+              <div className="flex items-center gap-2">
+                <h2 className="text-[14px] font-semibold text-bone">Product Backlog</h2>
+                <Badge variant="default" size="sm">
+                  {backlogStories.length}
+                </Badge>
+              </div>
+              <p className="text-[11px] text-fog mt-0.5">
+                Historias sin asignar listas para planificar
               </p>
             </div>
 
@@ -243,56 +306,69 @@ export function SprintsView({
               <select
                 value={effectiveTargetId ?? ''}
                 onChange={(e) => setSelectedTargetSprintId(Number(e.target.value))}
-                aria-label="Sprint destino"
-                className="px-2.5 py-1.5 bg-[#131B2E] border border-[#2D3449] rounded-lg text-[12px] text-white max-w-[180px]"
+                aria-label="Sprint destino para asignación"
+                className="px-2.5 py-1.5 bg-obsidian border border-graphite rounded-inputs text-[12px] text-mist focus:outline-none focus:border-iris-violet max-w-[190px] shadow-subtle cursor-pointer truncate"
               >
                 {sprints
                   .filter((s) => s.status !== 'CLOSED')
                   .map((sp) => (
                     <option key={sp.id} value={sp.id}>
-                      Destino: {sp.name}
+                      {sp.status === 'ACTIVE' ? '⚡ ' : '📋 '}
+                      {sp.name}
                     </option>
                   ))}
               </select>
             )}
           </div>
 
-          <div className="divide-y divide-[#1E293B] max-h-[600px] overflow-y-auto">
+          <div className="divide-y divide-graphite/60 max-h-[620px] overflow-y-auto">
             {backlogStories.length === 0 ? (
-              <p className="py-12 px-4 text-center text-[13px] text-[#8D90A0]">
-                No hay historias pendientes en el Product Backlog.
-              </p>
+              <div className="py-12 px-4 text-center">
+                <EmptyState
+                  compact
+                  icon={<Layers className="w-5 h-5" />}
+                  title="No hay historias pendientes"
+                  description="Todas las historias han sido asignadas a Sprints de trabajo."
+                />
+              </div>
             ) : (
               backlogStories.map((story) => (
                 <div
                   key={story.id}
-                  className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-[#131B2E]/60 transition-colors"
+                  className="px-4 py-3 flex items-center justify-between gap-3 hover:bg-obsidian/40 transition-colors group"
                 >
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 text-[11px]">
-                      <span className="font-mono text-[#B4C5FF]">{story.code}</span>
-                      <span className="text-[#475569]">·</span>
+                      <span className="font-mono text-signal-teal font-semibold">
+                        {story.code}
+                      </span>
+                      <span className="text-ash" aria-hidden="true">
+                        ·
+                      </span>
                       <PrioritySignal priority={story.priority} />
-                      <span className="text-[#475569]">·</span>
-                      <span className="font-mono tabular-nums text-[#8D90A0]">
+                      <span className="text-ash" aria-hidden="true">
+                        ·
+                      </span>
+                      <span className="font-mono tabular-nums text-iris-violet font-semibold">
                         {story.storyPoints} pts
                       </span>
                     </div>
-                    <p className="mt-1 text-[13px] font-medium text-white truncate">
+                    <p className="mt-1 text-[13px] font-medium text-bone truncate group-hover:text-paper">
                       {story.title}
                     </p>
                   </div>
 
                   {canManageSprints && effectiveTargetId && (
-                    <button
-                      type="button"
+                    <Button
+                      variant="outline"
+                      size="xs"
                       onClick={() => handleMoveStory(story.id, effectiveTargetId)}
+                      icon={<ArrowRight className="w-3 h-3" />}
                       title="Mover al Sprint seleccionado"
-                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-md bg-[#171F33] hover:bg-[#2563EB] border border-[#2D3449] text-[12px] text-[#DAE2FD] hover:text-white transition-colors shrink-0 whitespace-nowrap"
+                      className="shrink-0"
                     >
                       Asignar
-                      <ArrowRight className="w-3.5 h-3.5" />
-                    </button>
+                    </Button>
                   )}
                 </div>
               ))
@@ -300,148 +376,228 @@ export function SprintsView({
           </div>
         </section>
 
-        {/* Right: Sprints List */}
+        {/* Right Pane: Sprints Lifecycle List */}
         <section className="lg:col-span-7 space-y-4">
           {sprints.length === 0 ? (
-            <div className="rounded-xl bg-[#0F172A] border border-[#1E293B] py-14 px-6 text-center">
-              <p className="text-[14px] font-medium text-white">No hay Sprints creados aún</p>
-              <p className="mt-1 text-[13px] text-[#8D90A0]">
-                Crea un Sprint en estado Planificación para asignar historias del backlog.
-              </p>
-            </div>
+            <EmptyState
+              icon={<Calendar className="w-6 h-6" />}
+              title="Aún no hay Sprints creados"
+              description="Crea tu primer Sprint para comenzar la planificación de la iteración y asignar historias."
+              action={
+                canManageSprints ? (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setCreateOpen(true)}
+                    icon={<Plus className="w-3.5 h-3.5" />}
+                  >
+                    Crear primer Sprint
+                  </Button>
+                ) : undefined
+              }
+            />
           ) : (
             [...sprints]
               .sort((a, b) => {
                 const order = { ACTIVE: 0, PLANNING: 1, CLOSED: 2 };
                 return order[a.status] - order[b.status];
               })
-              .map((sprint) => {
+              .map((sprint, index) => {
                 const sprintStories = stories.filter((s) => s.sprintId === sprint.id);
+                const completedStoriesCount = sprintStories.filter((s) => s.isCompleted).length;
                 const totalPts = sprintStories.reduce((acc, s) => acc + (s.storyPoints || 0), 0);
-                const anotherActiveExists = Boolean(activeSprint && activeSprint.id !== sprint.id);
+                const completedPts = sprintStories
+                  .filter((s) => s.isCompleted)
+                  .reduce((acc, s) => acc + (s.storyPoints || 0), 0);
+                const progressPct =
+                  totalPts > 0 ? Math.round((completedPts / totalPts) * 100) : 0;
+
+                const anotherActiveExists = Boolean(
+                  activeSprint && activeSprint.id !== sprint.id
+                );
+                const isExpanded = Boolean(expandedSprintIds[sprint.id]);
+
+                const cardBorder =
+                  sprint.status === 'ACTIVE'
+                    ? 'border-pulse-green/40 shadow-lg ring-1 ring-pulse-green/20'
+                    : sprint.status === 'PLANNING'
+                    ? 'border-iris-violet/30'
+                    : 'border-graphite opacity-85';
 
                 return (
-                  <div
+                  <motion.div
                     key={sprint.id}
-                    className={`rounded-xl bg-[#131B2E] border overflow-hidden ${
-                      sprint.status === 'ACTIVE'
-                        ? 'border-[#10B981]/40'
-                        : 'border-[#222A3D]'
-                    }`}
+                    initial={shouldReduceMotion ? {} : { opacity: 0, y: 12 }}
+                    animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
+                    transition={{ duration: 0.18, delay: Math.min(index * 0.05, 0.25) }}
+                    className={`rounded-cards bg-carbon border ${cardBorder} overflow-hidden shadow-subtle transition-all`}
                   >
-                    <div className="px-5 py-4 border-b border-[#1E293B] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                      <div className="space-y-1 min-w-0">
+                    {/* Sprint Header */}
+                    <div className="p-4 sm:p-5 border-b border-graphite flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div className="space-y-1.5 min-w-0 flex-1">
                         <div className="flex flex-wrap items-center gap-2.5">
-                          <h3 className="font-display text-[16px] font-semibold text-white">
-                            {sprint.name}
-                          </h3>
+                          <button
+                            type="button"
+                            onClick={() => toggleSprintExpanded(sprint.id)}
+                            className="flex items-center gap-1.5 text-left group"
+                          >
+                            <h3 className="font-display text-[16px] font-semibold text-bone group-hover:text-paper transition-colors">
+                              {sprint.name}
+                            </h3>
+                            {isExpanded ? (
+                              <ChevronUp className="w-4 h-4 text-fog group-hover:text-paper" />
+                            ) : (
+                              <ChevronDown className="w-4 h-4 text-fog group-hover:text-paper" />
+                            )}
+                          </button>
                           <SprintStatusText status={sprint.status} />
                         </div>
-                        <div className="flex flex-wrap items-center gap-2 text-[12px] text-[#8D90A0]">
-                          <span className="inline-flex items-center gap-1 font-mono tabular-nums">
-                            <Calendar className="w-3.5 h-3.5" />
+
+                        <div className="flex flex-wrap items-center gap-3 text-[12px] text-fog">
+                          <span className="inline-flex items-center gap-1.5 font-mono tabular-nums text-mist">
+                            <Calendar className="w-3.5 h-3.5 text-fog" />
                             {sprint.startDate} → {sprint.endDate}
                           </span>
-                          <span aria-hidden="true">·</span>
-                          <span className="font-mono tabular-nums text-[#C3C6D7]">
-                            {sprintStories.length} historias · {totalPts} pts
+                          <span className="text-ash" aria-hidden="true">
+                            ·
+                          </span>
+                          <span className="font-mono tabular-nums">
+                            {sprintStories.length} historias ({completedStoriesCount} listas)
+                          </span>
+                          <span className="text-ash" aria-hidden="true">
+                            ·
+                          </span>
+                          <span className="font-mono tabular-nums font-semibold text-iris-violet">
+                            {completedPts}/{totalPts} pts ({progressPct}%)
                           </span>
                         </div>
+
                         {sprint.goal && (
-                          <p className="text-[12px] text-[#C3C6D7] pt-0.5">{sprint.goal}</p>
+                          <div className="flex items-center gap-1.5 pt-0.5 text-[12px] text-mist">
+                            <Target className="w-3.5 h-3.5 text-signal-teal shrink-0" />
+                            <span className="truncate">{sprint.goal}</span>
+                          </div>
                         )}
                       </div>
 
+                      {/* Action buttons */}
                       {canManageSprints && (
                         <div className="flex items-center gap-2 shrink-0">
                           {sprint.status === 'PLANNING' && (
-                            <button
-                              type="button"
+                            <Button
+                              variant="primary"
+                              size="xs"
                               disabled={anotherActiveExists}
                               onClick={() => handleStartSprint(sprint.id)}
                               title={
                                 anotherActiveExists
-                                  ? 'Ya existe un Sprint activo. Debes cerrarlo antes de iniciar uno nuevo.'
-                                  : 'Iniciar Sprint'
+                                  ? 'Ya existe un Sprint activo en el proyecto. Debes cerrarlo antes de iniciar otro.'
+                                  : 'Iniciar este Sprint'
                               }
-                              className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-[12px] font-medium transition-colors disabled:opacity-40 disabled:cursor-not-allowed whitespace-nowrap"
+                              icon={<Play className="w-3.5 h-3.5" />}
                             >
-                              <Play className="w-3.5 h-3.5" />
                               Iniciar Sprint
-                            </button>
+                            </Button>
                           )}
                           {sprint.status === 'ACTIVE' && (
                             <>
-                              <button
-                                type="button"
+                              <Button
+                                variant="outline"
+                                size="xs"
                                 onClick={onGoToKanban}
-                                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-lg bg-[#1E293B] hover:bg-[#2D3449] text-[#DAE2FD] text-[12px] font-medium transition-colors whitespace-nowrap"
+                                icon={<Kanban className="w-3.5 h-3.5 text-signal-teal" />}
                               >
-                                <Kanban className="w-3.5 h-3.5" />
-                                Kanban
-                              </button>
-                              <button
-                                type="button"
+                                Tablero Kanban
+                              </Button>
+                              <Button
+                                variant="primary"
+                                size="xs"
                                 onClick={() => setCloseModalSprint(sprint)}
-                                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-lg bg-[#059669] hover:bg-[#047857] text-white text-[12px] font-medium transition-colors whitespace-nowrap"
+                                icon={<CheckSquare className="w-3.5 h-3.5" />}
+                                className="bg-pulse-green hover:bg-pulse-green/90 text-void font-semibold"
                               >
-                                <CheckSquare className="w-3.5 h-3.5" />
-                                Cerrar Sprint
-                              </button>
+                                Finalizar Sprint
+                              </Button>
                             </>
                           )}
                         </div>
                       )}
                     </div>
 
-                    {/* Stories inside Sprint */}
-                    <div className="divide-y divide-[#1E293B] bg-[#0F172A]/60">
-                      {sprintStories.length === 0 ? (
-                        <p className="py-6 px-4 text-center text-[12px] text-[#8D90A0]">
-                          Sprint Backlog vacío. Asigna historias desde el panel izquierdo.
-                        </p>
-                      ) : (
-                        sprintStories.map((story) => (
-                          <div
-                            key={story.id}
-                            className="px-4 py-2.5 flex items-center justify-between gap-3"
-                          >
-                            <div className="flex items-center gap-2.5 min-w-0">
-                              <span className="font-mono text-[11px] text-[#B4C5FF] shrink-0">
-                                {story.code}
-                              </span>
-                              <span className="text-[13px] text-[#DAE2FD] truncate">
-                                {story.title}
-                              </span>
-                            </div>
-
-                            <div className="flex items-center gap-3 shrink-0">
-                              <PrioritySignal priority={story.priority} />
-                              <span className="font-mono tabular-nums text-[12px] text-[#8D90A0]">
-                                {story.storyPoints} pts
-                              </span>
-                              {story.isCompleted && (
-                                <CheckCircle2
-                                  className="w-4 h-4 text-[#4EDEA3]"
-                                  aria-label="Completada"
-                                />
-                              )}
-                              {canManageSprints && sprint.status !== 'CLOSED' && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleMoveStory(story.id, null)}
-                                  title="Devolver al Product Backlog"
-                                  className="p-1 rounded hover:bg-[#1E293B] text-[#8D90A0] hover:text-white transition-colors"
-                                >
-                                  <ArrowLeft className="w-3.5 h-3.5" />
-                                </button>
-                              )}
-                            </div>
-                          </div>
-                        ))
-                      )}
+                    {/* Progress Bar */}
+                    <div className="h-1.5 w-full bg-obsidian overflow-hidden">
+                      <motion.div
+                        initial={shouldReduceMotion ? false : { width: 0 }}
+                        animate={{ width: `${progressPct}%` }}
+                        transition={{ duration: 0.5, ease: 'easeOut' }}
+                        className={`h-full rounded-pills ${
+                          sprint.status === 'ACTIVE'
+                            ? 'bg-pulse-green'
+                            : sprint.status === 'CLOSED'
+                            ? 'bg-graphite'
+                            : 'bg-iris-violet'
+                        }`}
+                      />
                     </div>
-                  </div>
+
+                    {/* Stories inside Sprint (Accordion) */}
+                    <AnimatePresence>
+                      {isExpanded && (
+                        <motion.div
+                          initial={shouldReduceMotion ? {} : { opacity: 0, height: 0 }}
+                          animate={shouldReduceMotion ? {} : { opacity: 1, height: 'auto' }}
+                          exit={shouldReduceMotion ? {} : { opacity: 0, height: 0 }}
+                          transition={{ duration: 0.18, ease: 'easeOut' }}
+                          className="divide-y divide-graphite/40 bg-obsidian/40 border-t border-graphite"
+                        >
+                          {sprintStories.length === 0 ? (
+                            <p className="py-6 px-4 text-center text-[12px] text-fog">
+                              Sprint Backlog vacío. Asigna historias desde el panel del Product Backlog.
+                            </p>
+                          ) : (
+                            sprintStories.map((story) => (
+                              <div
+                                key={story.id}
+                                className="px-4 py-2.5 flex items-center justify-between gap-3 hover:bg-carbon/40 transition-colors"
+                              >
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  <span className="font-mono text-[11px] font-semibold text-signal-teal shrink-0">
+                                    {story.code}
+                                  </span>
+                                  <span className="text-[13px] text-bone truncate">
+                                    {story.title}
+                                  </span>
+                                </div>
+
+                                <div className="flex items-center gap-3 shrink-0">
+                                  <PrioritySignal priority={story.priority} />
+                                  <span className="font-mono tabular-nums text-[12px] text-fog">
+                                    {story.storyPoints} pts
+                                  </span>
+                                  {story.isCompleted && (
+                                    <Badge variant="success" size="sm" dot>
+                                      Lista
+                                    </Badge>
+                                  )}
+                                  {canManageSprints && sprint.status !== 'CLOSED' && (
+                                    <button
+                                      type="button"
+                                      onClick={() => handleMoveStory(story.id, null)}
+                                      title="Devolver al Product Backlog"
+                                      aria-label="Devolver historia al Product Backlog"
+                                      className="p-1 rounded-inputs hover:bg-graphite text-fog hover:text-paper transition-colors"
+                                    >
+                                      <ArrowLeft className="w-3.5 h-3.5" />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            ))
+                          )}
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </motion.div>
                 );
               })
           )}
@@ -449,166 +605,146 @@ export function SprintsView({
       </div>
 
       {/* Create Sprint Modal */}
-      {createOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px] p-4">
-          <form
-            onSubmit={handleCreateSprint}
-            className="w-full max-w-md rounded-xl bg-[#171F33] border border-[#334155] p-6 shadow-2xl space-y-4"
-          >
-            <div className="flex items-center justify-between">
-              <h2 className="font-display text-lg font-semibold text-white">Crear Sprint</h2>
-              <button
-                type="button"
-                onClick={() => setCreateOpen(false)}
-                className="text-[#8D90A0] hover:text-white"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-            <div>
-              <label className="block text-[12px] font-medium text-[#C3C6D7] mb-1.5">
-                Nombre del Sprint *
-              </label>
-              <input
-                type="text"
-                required
-                value={sprintName}
-                onChange={(e) => setSprintName(e.target.value)}
-                placeholder="Ej. Sprint 16 — Integración Pasarela"
-                className="w-full px-3.5 py-2 bg-[#0F172A] border border-[#334155] rounded-lg text-[13px] text-white focus:outline-none focus:border-[#3B82F6]"
-              />
-            </div>
-            <div>
-              <label className="block text-[12px] font-medium text-[#C3C6D7] mb-1.5">
-                Objetivo del Sprint
-              </label>
-              <textarea
-                rows={2}
-                value={sprintGoal}
-                onChange={(e) => setSprintGoal(e.target.value)}
-                placeholder="Meta funcional principal de la iteración..."
-                className="w-full px-3.5 py-2 bg-[#0F172A] border border-[#334155] rounded-lg text-[13px] text-white focus:outline-none focus:border-[#3B82F6]"
-              />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <label className="block text-[12px] font-medium text-[#C3C6D7] mb-1.5">
-                  Fecha inicio *
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={startDate}
-                  onChange={(e) => {
-                    setStartDate(e.target.value);
-                    setDateError('');
-                  }}
-                  className="w-full px-3 py-2 bg-[#0F172A] border border-[#334155] rounded-lg text-[13px] font-mono text-white"
-                />
-              </div>
-              <div>
-                <label className="block text-[12px] font-medium text-[#C3C6D7] mb-1.5">
-                  Fecha fin *
-                </label>
-                <input
-                  type="date"
-                  required
-                  value={endDate}
-                  onChange={(e) => {
-                    setEndDate(e.target.value);
-                    setDateError('');
-                  }}
-                  className="w-full px-3 py-2 bg-[#0F172A] border border-[#334155] rounded-lg text-[13px] font-mono text-white"
-                />
-              </div>
-            </div>
-            {dateError && <p className="text-[12px] text-[#FDA4AF]">{dateError}</p>}
+      <Modal
+        open={createOpen}
+        onClose={() => setCreateOpen(false)}
+        title="Crear nuevo Sprint"
+        description="Define el nombre de la iteración, objetivo funcional y fechas límite."
+        size="md"
+      >
+        <form onSubmit={handleCreateSprint} className="space-y-4">
+          <Input
+            label="Nombre del Sprint"
+            required
+            value={sprintName}
+            onChange={(e) => setSprintName(e.target.value)}
+            placeholder="Ej. Sprint 3 — Flujo de Autenticación"
+          />
+          <Textarea
+            label="Objetivo del Sprint (Goal)"
+            rows={2}
+            value={sprintGoal}
+            onChange={(e) => setSprintGoal(e.target.value)}
+            placeholder="Meta de negocio principal de esta iteración..."
+          />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <Input
+              label="Fecha de inicio"
+              type="date"
+              required
+              value={startDate}
+              onChange={(e) => {
+                setStartDate(e.target.value);
+                setDateError('');
+              }}
+            />
+            <Input
+              label="Fecha de finalización"
+              type="date"
+              required
+              value={endDate}
+              onChange={(e) => {
+                setEndDate(e.target.value);
+                setDateError('');
+              }}
+              error={dateError}
+            />
+          </div>
 
-            <div className="flex justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setCreateOpen(false)}
-                className="px-4 py-2 text-[13px] text-[#C3C6D7] hover:text-white rounded-lg hover:bg-[#222A3D]"
-              >
-                Cancelar
-              </button>
-              <button
-                type="submit"
-                disabled={creating}
-                className="px-4 py-2 text-[13px] font-medium bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-lg disabled:opacity-60"
-              >
-                {creating ? 'Creando...' : 'Crear Sprint'}
-              </button>
-            </div>
-          </form>
-        </div>
-      )}
+          <div className="flex justify-end gap-2.5 pt-2 border-t border-graphite">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => setCreateOpen(false)}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="sm"
+              loading={creating}
+            >
+              Crear Sprint
+            </Button>
+          </div>
+        </form>
+      </Modal>
 
-      {/* Transactional Close Sprint Confirmation Modal (RF-13) */}
+      {/* Transactional Close Sprint Confirmation Modal */}
       {closeModalSprint && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-[2px] p-4">
-          <div className="w-full max-w-lg rounded-xl bg-[#171F33] border border-[#334155] p-6 shadow-2xl space-y-4">
-            <h2 className="font-display text-lg font-semibold text-white">
-              Cerrar {closeModalSprint.name}
-            </h2>
-
-            <div className="p-3.5 rounded-lg bg-[#0F172A] border border-[#2D3449] flex items-center justify-between text-[13px]">
+        <Modal
+          open={Boolean(closeModalSprint)}
+          onClose={() => setCloseModalSprint(null)}
+          title={`Finalizar ${closeModalSprint.name}`}
+          description="Al cerrar el Sprint, se consolidarán las métricas y los Story Points logrados."
+          size="md"
+        >
+          <div className="space-y-4">
+            <div className="p-3.5 rounded-inputs bg-carbon border border-graphite flex items-center justify-between text-[13px]">
               <span>
                 Historias completadas:{' '}
-                <strong className="font-mono text-[#4EDEA3]">
+                <strong className="font-mono text-pulse-green">
                   {closeModalStats.completed.length}
                 </strong>
               </span>
               <span>
-                Historias pendientes:{' '}
-                <strong className="font-mono text-[#FCD34D]">
+                Historias incompletas:{' '}
+                <strong className="font-mono text-amber-400">
                   {closeModalStats.incomplete.length}
                 </strong>
               </span>
             </div>
 
             {closeModalStats.incomplete.length > 0 ? (
-              <div className="p-3.5 rounded-lg bg-[#F59E0B]/10 border border-[#F59E0B]/30 space-y-2">
-                <div className="flex items-start gap-2 text-[13px] text-[#FDE68A]">
-                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-[#F59E0B]" />
+              <div className="p-3.5 rounded-inputs bg-amber-400/10 border border-amber-400/30 space-y-2">
+                <div className="flex items-start gap-2 text-[13px] text-amber-300">
+                  <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
                   <p>
-                    Este Sprint contiene historias de usuario incompletas. Al cerrarlo, estas historias regresarán automáticamente al Product Backlog. ¿Deseas continuar?
+                    Este Sprint tiene historias de usuario incompletas. De acuerdo con Scrum, estas historias regresarán automáticamente al Product Backlog para ser repriorizadas.
                   </p>
                 </div>
-                <ul className="pl-6 list-disc text-[12px] text-[#C3C6D7] space-y-0.5">
+                <ul className="pl-6 list-disc text-[12px] text-mist space-y-0.5">
                   {closeModalStats.incomplete.map((st) => (
                     <li key={st.id}>
-                      <span className="font-mono text-[#B4C5FF]">{st.code}</span> · {st.title}
+                      <span className="font-mono text-signal-teal">{st.code}</span> · {st.title}
                     </li>
                   ))}
                 </ul>
               </div>
             ) : (
-              <p className="text-[13px] text-[#C3C6D7]">
-                Todas las historias de este Sprint tienen el 100% de sus tareas en estado Done. Se consolidarán los Story Points entregados.
-              </p>
+              <div className="p-3.5 rounded-inputs bg-pulse-green/10 border border-pulse-green/30 text-[13px] text-pulse-green flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 shrink-0" />
+                <span>
+                  Todas las historias del Sprint tienen el 100% de sus tareas en Done. ¡Excelente entrega!
+                </span>
+              </div>
             )}
 
-            <div className="flex justify-end gap-2.5 pt-2">
-              <button
+            <div className="flex justify-end gap-2.5 pt-2 border-t border-graphite">
+              <Button
                 type="button"
+                variant="ghost"
+                size="sm"
                 onClick={() => setCloseModalSprint(null)}
                 disabled={closing}
-                className="px-4 py-2 text-[13px] text-[#C3C6D7] hover:text-white rounded-lg hover:bg-[#222A3D]"
               >
                 Cancelar
-              </button>
-              <button
+              </Button>
+              <Button
                 type="button"
+                variant="primary"
+                size="sm"
+                loading={closing}
                 onClick={handleConfirmCloseSprint}
-                disabled={closing}
-                className="px-4 py-2 text-[13px] font-medium bg-[#059669] hover:bg-[#047857] text-white rounded-lg disabled:opacity-60"
+                className="bg-pulse-green hover:bg-pulse-green/90 text-void font-semibold"
               >
-                {closing ? 'Cerrando Sprint...' : 'Confirmar cierre'}
-              </button>
+                Confirmar cierre
+              </Button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );
