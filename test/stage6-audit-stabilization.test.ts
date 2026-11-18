@@ -12,9 +12,9 @@ test('Auditoría, Seguridad y Estabilización (Etapa 6) - Suite Automatizada', a
     const token1 = store.createResetToken('admin@velocity.dev');
     assert.ok(token1, 'Debe generar un token para un usuario existente');
     
-    // Validate format: 4 groups of 4 uppercase hex characters (64-bit cryptographic entropy)
-    const tokenRegex = /^[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}-[0-9A-F]{4}$/;
-    assert.match(token1!, tokenRegex, 'El token debe seguir el formato criptográfico XXXX-XXXX-XXXX-XXXX');
+    // Validate format: 8 groups of 4 uppercase hex characters (128-bit cryptographic entropy)
+    const tokenRegex = /^([0-9A-F]{4}-){7}[0-9A-F]{4}$/;
+    assert.match(token1!, tokenRegex, 'El token debe poseer 128 bits de entropía criptográfica (8 bloques de 4 caracteres hex)');
 
     const token2 = store.createResetToken('admin@velocity.dev');
     assert.ok(token2, 'Debe generar un segundo token');

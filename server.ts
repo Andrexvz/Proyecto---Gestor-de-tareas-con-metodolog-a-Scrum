@@ -6,14 +6,24 @@ import jwt from 'jsonwebtoken';
 import { GoogleGenAI, Type } from '@google/genai';
 import { createServer as createViteServer } from 'vite';
 import { store, type StoredUser } from './server/store';
+import { sendPasswordResetEmail, getEmailServiceStatus } from './server/emailService';
 import type { ScrumRole, StoryPriority, TaskStatus } from './src/types/scrum';
 
 const PORT = 3000;
 const JWT_SECRET = process.env.JWT_SECRET || 'agile-velocity-scrum-dev-secret-2026-hmac256';
 const AI_TIMEOUT_MS = 8000;
 
-if (process.env.NODE_ENV === 'production' && !process.env.JWT_SECRET) {
-  console.warn('[SECURITY WARNING] In production, JWT_SECRET should be defined in environment variables.');
+// Production Fail-Fast Security Guarantee: refuse to boot with default/short secret
+if (process.env.NODE_ENV === 'production') {
+  const secret = process.env.JWT_SECRET;
+  if (!secret || secret.includes('dev-secret') || secret.length < 32) {
+    console.error('====================================================================');
+    console.error('FATAL PRODUCTION ERROR: JWT_SECRET environment variable is missing,');
+    console.error('contains default development values, or is less than 32 characters.');
+    console.error('Application will not start in production with an insecure secret.');
+    console.error('====================================================================');
+    process.exit(1);
+  }
 }
 
 // In-memory brute force protection tracking
@@ -69,7 +79,7 @@ function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) 
   }
 
   try {
-    const decoded = jwt.verify(token, JWT_SECRET) as { userId: number };
+    const decoded = jwt.verify(token, JWT_SECRET, { algorithms: ['HS256'] }) as { userId: number };
     const user = store.findUserById(decoded.userId);
     if (!user) {
       res.status(401).json({ error: 'Sesión inválida o usuario inexistente' });
@@ -111,14 +121,36 @@ function requireProjectAccess(allowedRoles?: Array<ScrumRole | 'ADMIN'>) {
 
 async function startServer() {
   const app = express();
-  app.use(express.json());
+  app.disable('x-powered-by');
+  app.set('trust proxy', 1);
+  app.use(express.json({ limit: '1mb' }));
 
-  // Security Headers Middleware (OWASP recommended defense-in-depth)
-  app.use((_req, res, next) => {
+  // Modern Content-Security-Policy & Defensive Headers (OWASP)
+  const isProd = process.env.NODE_ENV === 'production';
+  const cspDirectives = [
+    "default-src 'self'",
+    isProd
+      ? "script-src 'self'"
+      : "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+    "font-src 'self' https://fonts.gstatic.com data:",
+    "img-src 'self' data: blob:",
+    "connect-src 'self' ws: wss: https://generativelanguage.googleapis.com",
+    "frame-ancestors 'self'",
+    "base-uri 'self'",
+    "form-action 'self'",
+  ].join('; ');
+
+  app.use((req, res, next) => {
+    res.setHeader('Content-Security-Policy', cspDirectives);
     res.setHeader('X-Content-Type-Options', 'nosniff');
     res.setHeader('X-Frame-Options', 'SAMEORIGIN');
-    res.setHeader('X-XSS-Protection', '1; mode=block');
     res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+
+    if (req.secure || req.headers['x-forwarded-proto'] === 'https') {
+      res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains; preload');
+    }
     next();
   });
 
@@ -155,6 +187,7 @@ async function startServer() {
 
     const token = jwt.sign({ userId: user.id, role: user.globalRole }, JWT_SECRET, {
       expiresIn: '24h',
+      algorithm: 'HS256',
     });
     res.json({
       token,
@@ -166,7 +199,7 @@ async function startServer() {
     res.json({ user: store.sanitizeUser(req.user!) });
   });
 
-  app.post('/api/v1/auth/forgot-password', (req, res) => {
+  app.post('/api/v1/auth/forgot-password', async (req, res) => {
     const clientIp = req.ip || req.socket.remoteAddress || 'unknown';
     const { email } = req.body ?? {};
     if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(email))) {
@@ -185,11 +218,31 @@ async function startServer() {
     }
 
     const token = store.createResetToken(String(email));
+    if (token) {
+      await sendPasswordResetEmail(String(email), token);
+    }
+
     // RF-16 neutral response; demoToken is included strictly for local evaluation when present
     res.json({
       message:
         'Si el correo existe en nuestro sistema, recibirás instrucciones para restablecer tu contraseña en los próximos minutos.',
       ...(process.env.NODE_ENV !== 'production' && token ? { demoToken: token } : {}),
+    });
+  });
+
+  // System security audit endpoint (Admin only)
+  app.get('/api/v1/system/status', authenticateToken, (req: AuthRequest, res) => {
+    if (req.user!.globalRole !== 'ADMIN') {
+      res.status(403).json({ error: 'Acceso restringido a Administradores' });
+      return;
+    }
+    res.json({
+      environment: process.env.NODE_ENV || 'development',
+      emailService: getEmailServiceStatus(),
+      databaseMode: 'local_json_atomic',
+      backupAvailable: true,
+      jwtAlgorithm: 'HS256',
+      timestamp: new Date().toISOString(),
     });
   });
 

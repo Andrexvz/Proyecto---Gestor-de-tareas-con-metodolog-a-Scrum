@@ -562,7 +562,19 @@ class ScrumStore {
     } catch {
       // Ignorar fallo al respaldar
     }
-    fs.writeFileSync(DB_PATH, data, 'utf-8');
+
+    // Atomic write pattern: write to isolated temp file then atomically rename
+    const tmpPath = `${DB_PATH}.${Date.now()}.${Math.random().toString(36).slice(2, 6)}.tmp`;
+    fs.writeFileSync(tmpPath, data, 'utf-8');
+    try {
+      fs.renameSync(tmpPath, DB_PATH);
+    } catch {
+      // Fallback in case of Windows file-lock contention
+      fs.copyFileSync(tmpPath, DB_PATH);
+      try {
+        fs.unlinkSync(tmpPath);
+      } catch {}
+    }
   }
 
   public sanitizeUser(u: StoredUser): User {
@@ -1159,9 +1171,9 @@ class ScrumStore {
       }
     }
 
-    // Cryptographically secure token (uppercase hex format XXXX-XXXX-XXXX-XXXX)
-    const raw = crypto.randomBytes(8).toString('hex').toUpperCase();
-    const token = `${raw.slice(0, 4)}-${raw.slice(4, 8)}-${raw.slice(8, 12)}-${raw.slice(12, 16)}`;
+    // Cryptographically secure token (128 bits of randomness: 16 bytes = 32 hex chars, format: 8x4)
+    const raw = crypto.randomBytes(16).toString('hex').toUpperCase();
+    const token = raw.match(/.{1,4}/g)?.join('-') || raw;
 
     const id = ++this.db.counters.resetToken;
     this.db.resetTokens.push({
