@@ -176,7 +176,7 @@ test('Auditoría Integral de Métricas Scrum (Etapa Métricas Overhaul)', async 
     assert.ok(html.includes('Velocidad Media'), 'Debe incluir KPI de velocidad media');
     assert.ok(html.includes('Cumplimiento Puntos'), 'Debe incluir KPI de cumplimiento');
     assert.ok(html.includes('Historias Listas'), 'Debe incluir KPI de historias listas');
-    assert.ok(html.includes('Tareas en Done'), 'Debe incluir KPI de tareas en Done');
+    assert.ok(html.includes('Tareas en Hecho') || html.includes('Tareas en Done'), 'Debe incluir KPI de tareas en Hecho / Done');
 
     // Filtros de Sprint y Selector
     assert.ok(html.includes('Filtrar por Sprint'), 'Debe incluir accesiblemente el filtro por Sprint');

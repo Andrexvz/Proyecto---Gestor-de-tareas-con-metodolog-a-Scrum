@@ -10,10 +10,20 @@ test('Gestión de Tareas - Suite Automatizada', async (t) => {
   const projectStories = store.getStoriesByProject(1);
   assert.ok(projectStories.length > 0, 'Debe haber historias en el proyecto 1');
 
-  // Historia en Sprint Activo (Sprint 14: Story 3 "CBA-103")
-  const activeSprintStory = projectStories.find((s) => s.sprintId === 2) || projectStories[0];
-  // Historia en Sprint Cerrado (Sprint 13: Story 1 "CBA-101")
-  const closedSprintStory = projectStories.find((s) => s.sprintId === 1);
+  // Historia en Sprint Activo o Backlog editable (sprint no cerrado)
+  const activeSprintStory =
+    projectStories.find((s) => {
+      if (s.sprintId === null) return true;
+      const sp = store.getSprintById(s.sprintId);
+      return sp && sp.status !== 'CLOSED';
+    }) || projectStories[0];
+  // Historia en Sprint Cerrado
+  const closedSprintStory =
+    projectStories.find((s) => {
+      if (s.sprintId === null) return false;
+      const sp = store.getSprintById(s.sprintId);
+      return sp && sp.status === 'CLOSED';
+    }) || projectStories.find((s) => s.sprintId === 1);
 
   await t.test('1. Validaciones al crear tareas', () => {
     // 1.1 Falla si la descripción está vacía o tiene menos de 3 caracteres

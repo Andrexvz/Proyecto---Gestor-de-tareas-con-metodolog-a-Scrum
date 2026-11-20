@@ -215,10 +215,10 @@ test('Vistas Principales (Etapa 3) - Suite Automatizada', async (t) => {
 
     assert.ok(html.includes('Tablero Kanban'), 'Debe renderizar el título del tablero');
     assert.ok(html.includes('Sprint 1 - Core Flow'), 'Debe mostrar el nombre del Sprint activo');
-    assert.ok(html.includes('To Do'), 'Debe tener columna To Do');
-    assert.ok(html.includes('In Progress'), 'Debe tener columna In Progress');
-    assert.ok(html.includes('Testing'), 'Debe tener columna Testing');
-    assert.ok(html.includes('Done'), 'Debe tener columna Done');
+    assert.ok(html.includes('Por Hacer') || html.includes('To Do'), 'Debe tener columna Por Hacer');
+    assert.ok(html.includes('En Progreso') || html.includes('In Progress'), 'Debe tener columna En Progreso');
+    assert.ok(html.includes('En Revisión') || html.includes('Testing'), 'Debe tener columna En Revisión');
+    assert.ok(html.includes('Hecho') || html.includes('Done'), 'Debe tener columna Hecho');
     assert.ok(html.includes('TASK-1'), 'Debe listar la tarea');
     assert.ok(html.includes('Mis tareas'), 'Debe tener filtro de tareas personales');
   });

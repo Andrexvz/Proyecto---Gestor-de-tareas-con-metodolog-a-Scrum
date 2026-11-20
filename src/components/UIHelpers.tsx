@@ -93,13 +93,13 @@ export function SprintStatusText({ status }: { status: SprintStatus }) {
 export function TaskColumnLabel(status: TaskStatus): string {
   switch (status) {
     case 'TODO':
-      return 'To Do';
+      return 'Por Hacer';
     case 'IN_PROGRESS':
-      return 'In Progress';
+      return 'En Progreso';
     case 'TESTING':
-      return 'Testing';
+      return 'En Revisión';
     case 'DONE':
-      return 'Done';
+      return 'Hecho';
   }
 }
 

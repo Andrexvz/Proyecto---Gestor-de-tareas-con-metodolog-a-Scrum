@@ -142,10 +142,10 @@ export function MetricsView({ project, metrics, tasks, sprints = [], stories = [
   );
 
   const taskDistributionConfig = [
-    { key: 'TODO' as TaskStatus, label: 'To Do', color: '#94A3B8', bgClass: 'bg-smoke' },
-    { key: 'IN_PROGRESS' as TaskStatus, label: 'In Progress', color: '#8B5CF6', bgClass: 'bg-iris-violet' },
-    { key: 'TESTING' as TaskStatus, label: 'Testing', color: '#06B6D4', bgClass: 'bg-signal-teal' },
-    { key: 'DONE' as TaskStatus, label: 'Done', color: '#10B981', bgClass: 'bg-pulse-green' },
+    { key: 'TODO' as TaskStatus, label: 'Por Hacer', color: '#94A3B8', bgClass: 'bg-smoke' },
+    { key: 'IN_PROGRESS' as TaskStatus, label: 'En Progreso', color: '#8B5CF6', bgClass: 'bg-iris-violet' },
+    { key: 'TESTING' as TaskStatus, label: 'En Revisión', color: '#06B6D4', bgClass: 'bg-signal-teal' },
+    { key: 'DONE' as TaskStatus, label: 'Hecho', color: '#10B981', bgClass: 'bg-pulse-green' },
   ];
 
   // Donut chart calculations (significantly enlarged to radius 70 for 200x200 viewBox)
@@ -614,13 +614,13 @@ export function MetricsView({ project, metrics, tasks, sprints = [], stories = [
         >
           <div className="flex items-center justify-between">
             <span className="text-[12px] font-medium text-fog flex items-center gap-1">
-              Tareas en Done
+              Tareas en Hecho (Done)
               <button
                 type="button"
                 onClick={() => setActiveKpiHelp(activeKpiHelp === 'tasks' ? null : 'tasks')}
                 className="text-fog hover:text-bone cursor-pointer"
-                title="Ver explicación de Tareas en Done"
-                aria-label="Información de Tareas en Done"
+                title="Ver explicación de Tareas en Hecho"
+                aria-label="Información de Tareas en Hecho"
               >
                 <Info className="w-3 h-3 text-fog" />
               </button>

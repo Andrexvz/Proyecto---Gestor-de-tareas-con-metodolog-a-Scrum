@@ -135,8 +135,8 @@ test('Sección Mi Trabajo y Dashboard Personalizado por Rol - Suite Automatizada
     assert.ok(html.includes('Todas'), 'Debe incluir pestaña de todas las tareas');
     assert.ok(html.includes('Por Hacer'), 'Debe incluir categoría Por Hacer');
     assert.ok(html.includes('En Progreso'), 'Debe incluir categoría En Progreso');
-    assert.ok(html.includes('En Testing'), 'Debe incluir categoría En Testing');
-    assert.ok(html.includes('Completadas'), 'Debe incluir categoría Completadas');
+    assert.ok(html.includes('En Revisión') || html.includes('En Testing'), 'Debe incluir categoría En Revisión');
+    assert.ok(html.includes('Hecho') || html.includes('Completadas'), 'Debe incluir categoría Hecho');
     assert.ok(html.includes('Buscar por código'), 'Debe incluir campo de búsqueda dinámica');
   });
 

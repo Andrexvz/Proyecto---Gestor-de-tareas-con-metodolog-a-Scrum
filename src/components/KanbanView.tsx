@@ -53,10 +53,10 @@ const KANBAN_COLUMNS: Array<{
   accent: string;
   badgeVariant: 'default' | 'purple' | 'info' | 'success';
 }> = [
-  { id: 'TODO', title: 'To Do', accent: 'border-t-smoke', badgeVariant: 'default' },
-  { id: 'IN_PROGRESS', title: 'In Progress', accent: 'border-t-iris-violet', badgeVariant: 'purple' },
-  { id: 'TESTING', title: 'Testing', accent: 'border-t-signal-teal', badgeVariant: 'info' },
-  { id: 'DONE', title: 'Done', accent: 'border-t-pulse-green', badgeVariant: 'success' },
+  { id: 'TODO', title: 'Por Hacer', accent: 'border-t-smoke', badgeVariant: 'default' },
+  { id: 'IN_PROGRESS', title: 'En Progreso', accent: 'border-t-iris-violet', badgeVariant: 'purple' },
+  { id: 'TESTING', title: 'En Revisión', accent: 'border-t-signal-teal', badgeVariant: 'info' },
+  { id: 'DONE', title: 'Hecho', accent: 'border-t-pulse-green', badgeVariant: 'success' },
 ];
 
 interface KanbanViewProps {

@@ -222,13 +222,13 @@ export function MyWorkView({ onNavigate }: MyWorkViewProps) {
       case 'TESTING':
         return (
           <Badge variant="info" size="sm">
-            En Pruebas
+            En Revisión
           </Badge>
         );
       case 'DONE':
         return (
           <Badge variant="success" size="sm">
-            Completada
+            Hecho
           </Badge>
         );
     }
@@ -376,7 +376,7 @@ export function MyWorkView({ onNavigate }: MyWorkViewProps) {
               : 'bg-carbon/70 border-graphite hover:border-graphite/80'
           }`}
         >
-          <span className="text-[11px] font-medium text-signal-teal block">En Testing</span>
+          <span className="text-[11px] font-medium text-signal-teal block">En Revisión</span>
           <span className="font-display text-xl font-bold text-signal-teal font-mono mt-1 block">
             {stats.testing}
           </span>
@@ -391,7 +391,7 @@ export function MyWorkView({ onNavigate }: MyWorkViewProps) {
               : 'bg-carbon/70 border-graphite hover:border-graphite/80'
           }`}
         >
-          <span className="text-[11px] font-medium text-pulse-green block">Completadas</span>
+          <span className="text-[11px] font-medium text-pulse-green block">Hecho</span>
           <span className="font-display text-xl font-bold text-pulse-green font-mono mt-1 block">
             {stats.done}
           </span>
