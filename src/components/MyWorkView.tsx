@@ -340,8 +340,8 @@ export function MyWorkView({ onNavigate }: MyWorkViewProps) {
           onClick={() => setStatusTab('ALL')}
           className={`p-3.5 rounded-cards border text-left transition-all cursor-pointer ${
             statusTab === 'ALL'
-              ? 'bg-carbon border-iris-violet shadow-glow'
-              : 'bg-carbon/70 border-graphite hover:border-graphite/80'
+              ? 'bg-carbon border-signal-teal shadow-[0_0_12px_rgba(25,217,232,0.2)]'
+              : 'bg-carbon/70 border-graphite/80 hover:border-graphite'
           }`}
         >
           <span className="text-[11px] font-medium text-fog block">Todas</span>
@@ -355,8 +355,8 @@ export function MyWorkView({ onNavigate }: MyWorkViewProps) {
           onClick={() => setStatusTab('TODO')}
           className={`p-3.5 rounded-cards border text-left transition-all cursor-pointer ${
             statusTab === 'TODO'
-              ? 'bg-carbon border-smoke shadow-glow'
-              : 'bg-carbon/70 border-graphite hover:border-graphite/80'
+              ? 'bg-carbon border-smoke shadow-subtle'
+              : 'bg-carbon/70 border-graphite/80 hover:border-graphite'
           }`}
         >
           <span className="text-[11px] font-medium text-fog block">Por Hacer</span>
@@ -370,8 +370,8 @@ export function MyWorkView({ onNavigate }: MyWorkViewProps) {
           onClick={() => setStatusTab('IN_PROGRESS')}
           className={`p-3.5 rounded-cards border text-left transition-all cursor-pointer ${
             statusTab === 'IN_PROGRESS'
-              ? 'bg-carbon border-iris-violet shadow-glow'
-              : 'bg-carbon/70 border-graphite hover:border-graphite/80'
+              ? 'bg-carbon border-iris-violet shadow-[0_0_12px_rgba(168,85,247,0.25)]'
+              : 'bg-carbon/70 border-graphite/80 hover:border-graphite'
           }`}
         >
           <span className="text-[11px] font-medium text-iris-violet block">En Progreso</span>
@@ -385,8 +385,8 @@ export function MyWorkView({ onNavigate }: MyWorkViewProps) {
           onClick={() => setStatusTab('TESTING')}
           className={`p-3.5 rounded-cards border text-left transition-all cursor-pointer ${
             statusTab === 'TESTING'
-              ? 'bg-carbon border-signal-teal shadow-glow'
-              : 'bg-carbon/70 border-graphite hover:border-graphite/80'
+              ? 'bg-carbon border-signal-teal shadow-[0_0_12px_rgba(25,217,232,0.25)]'
+              : 'bg-carbon/70 border-graphite/80 hover:border-graphite'
           }`}
         >
           <span className="text-[11px] font-medium text-signal-teal block">En Revisión</span>
@@ -400,8 +400,8 @@ export function MyWorkView({ onNavigate }: MyWorkViewProps) {
           onClick={() => setStatusTab('DONE')}
           className={`p-3.5 rounded-cards border text-left transition-all cursor-pointer col-span-2 sm:col-span-1 ${
             statusTab === 'DONE'
-              ? 'bg-carbon border-pulse-green shadow-glow'
-              : 'bg-carbon/70 border-graphite hover:border-graphite/80'
+              ? 'bg-carbon border-pulse-green shadow-[0_0_12px_rgba(48,217,155,0.25)]'
+              : 'bg-carbon/70 border-graphite/80 hover:border-graphite'
           }`}
         >
           <span className="text-[11px] font-medium text-pulse-green block">Hecho</span>

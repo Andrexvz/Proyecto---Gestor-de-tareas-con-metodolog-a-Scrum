@@ -1,23 +1,23 @@
 @import "tailwindcss";
 
 @theme {
-  /* Colors */
-  --color-void: #08090a;
-  --color-carbon: #0f1011;
-  --color-obsidian: #161718;
-  --color-graphite: #23252a;
-  --color-smoke: #383b3f;
-  --color-ash: #62666d;
-  --color-fog: #8a8f98;
-  --color-mist: #d0d6e0;
-  --color-bone: #e5e5e6;
-  --color-paper: #ffffff;
-  --color-acid-lime: #e4f222;
-  --color-pulse-green: #27a644;
-  --color-coral-red: #eb5757;
-  --color-signal-teal: #02b8cc;
-  --color-iris-violet: #6366f1;
-  --color-lavender: #8b5cf6;
+  /* Colors - Premium Dark Neon Palette */
+  --color-void: #070D16;
+  --color-carbon: #0E1624;
+  --color-obsidian: #111C2A;
+  --color-graphite: #1C293D;
+  --color-smoke: #263852;
+  --color-ash: #64748B;
+  --color-fog: #94A3B8;
+  --color-mist: #CBD5E1;
+  --color-bone: #F4F7FB;
+  --color-paper: #FFFFFF;
+  --color-acid-lime: #FBBF24;
+  --color-pulse-green: #30D99B;
+  --color-coral-red: #F43F5E;
+  --color-signal-teal: #19D9E8;
+  --color-iris-violet: #A855F7;
+  --color-lavender: #C084FC;
 
   /* Typography */
   --font-inter-variable: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -72,49 +72,49 @@
   --spacing-128: 128px;
 
   /* Border Radius */
-  --radius-sm: 2px;
-  --radius-md: 6px;
-  --radius-xl: 12px;
-  --radius-2xl: 16px;
-  --radius-2xl-2: 22px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+  --radius-2xl-2: 24px;
   --radius-full: 400px;
   --radius-full-2: 9999px;
-  --radius-cards: 12px;
+  --radius-cards: 16px;
   --radius-pills: 9999px;
-  --radius-small: 2px;
-  --radius-badges: 4px;
-  --radius-inputs: 6px;
-  --radius-buttons: 6px;
+  --radius-small: 4px;
+  --radius-badges: 6px;
+  --radius-inputs: 8px;
+  --radius-buttons: 8px;
 
   /* Shadows */
   --shadow-sm: rgba(0, 0, 0, 0.4) 0px 2px 4px 0px;
   --shadow-md: rgba(0, 0, 0, 0.2) 0px 0px 12px 0px inset;
-  --shadow-subtle: rgb(35, 37, 42) 0px 0px 0px 1px inset;
+  --shadow-subtle: rgba(28, 41, 61, 0.6) 0px 0px 0px 1px inset;
   --shadow-subtle-2: rgba(0, 0, 0, 0.2) 0px 0px 0px 1px;
   --shadow-subtle-3: rgba(0, 0, 0, 0.01) 0px 5px 2px 0px, rgba(0, 0, 0, 0.04) 0px 3px 2px 0px, rgba(0, 0, 0, 0.07) 0px 1px 1px 0px, rgba(0, 0, 0, 0.08) 0px 0px 1px 0px;
-  --shadow-xl: rgba(8, 9, 10, 0.6) 0px 4px 32px 0px;
-  --shadow-subtle-4: rgba(255, 255, 255, 0.03) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.04) 0px 1px 0px 0px inset, rgba(0, 0, 0, 0.6) 0px 0px 0px 1px, rgba(0, 0, 0, 0.1) 0px 4px 4px 0px;
+  --shadow-xl: rgba(7, 13, 22, 0.8) 0px 8px 32px 0px;
+  --shadow-subtle-4: rgba(255, 255, 255, 0.04) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset, rgba(0, 0, 0, 0.6) 0px 0px 0px 1px, rgba(0, 0, 0, 0.1) 0px 4px 4px 0px;
   --shadow-subtle-5: rgba(0, 0, 0, 0.1) 0px 0px 0px 2px;
 }
 
 :root {
-  /* Colors */
-  --color-void: #08090a;
-  --color-carbon: #0f1011;
-  --color-obsidian: #161718;
-  --color-graphite: #23252a;
-  --color-smoke: #383b3f;
-  --color-ash: #62666d;
-  --color-fog: #8a8f98;
-  --color-mist: #d0d6e0;
-  --color-bone: #e5e5e6;
-  --color-paper: #ffffff;
-  --color-acid-lime: #e4f222;
-  --color-pulse-green: #27a644;
-  --color-coral-red: #eb5757;
-  --color-signal-teal: #02b8cc;
-  --color-iris-violet: #6366f1;
-  --color-lavender: #8b5cf6;
+  /* Colors - Reference: Aether Analytics Dark Neon (#070D16, #111C2A, #19D9E8, #A855F7, #30D99B, #F4F7FB, #94A3B8) */
+  --color-void: #070D16;
+  --color-carbon: #0E1624;
+  --color-obsidian: #111C2A;
+  --color-graphite: #1C293D;
+  --color-smoke: #263852;
+  --color-ash: #64748B;
+  --color-fog: #94A3B8;
+  --color-mist: #CBD5E1;
+  --color-bone: #F4F7FB;
+  --color-paper: #FFFFFF;
+  --color-acid-lime: #FBBF24;
+  --color-pulse-green: #30D99B;
+  --color-coral-red: #F43F5E;
+  --color-signal-teal: #19D9E8;
+  --color-iris-violet: #A855F7;
+  --color-lavender: #C084FC;
 
   /* Typography — Font Families */
   --font-inter-variable: 'Inter Variable', 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
@@ -171,47 +171,47 @@
   --spacing-128: 128px;
 
   /* Layout */
-  --page-max-width: 1200px;
+  --page-max-width: 1400px;
   --section-gap: 96px;
   --card-padding: 24px;
   --element-gap: 8px;
 
   /* Border Radius */
-  --radius-sm: 2px;
-  --radius-md: 6px;
-  --radius-xl: 12px;
-  --radius-2xl: 16px;
-  --radius-2xl-2: 22px;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-xl: 14px;
+  --radius-2xl: 18px;
+  --radius-2xl-2: 24px;
   --radius-full: 400px;
   --radius-full-2: 9999px;
 
   /* Named Radii */
-  --radius-cards: 12px;
+  --radius-cards: 16px;
   --radius-pills: 9999px;
-  --radius-small: 2px;
-  --radius-badges: 4px;
-  --radius-inputs: 6px;
-  --radius-buttons: 6px;
+  --radius-small: 4px;
+  --radius-badges: 6px;
+  --radius-inputs: 8px;
+  --radius-buttons: 8px;
 
   /* Shadows */
   --shadow-sm: rgba(0, 0, 0, 0.4) 0px 2px 4px 0px;
   --shadow-md: rgba(0, 0, 0, 0.2) 0px 0px 12px 0px inset;
-  --shadow-subtle: rgb(35, 37, 42) 0px 0px 0px 1px inset;
+  --shadow-subtle: rgba(28, 41, 61, 0.6) 0px 0px 0px 1px inset;
   --shadow-subtle-2: rgba(0, 0, 0, 0.2) 0px 0px 0px 1px;
   --shadow-subtle-3: rgba(0, 0, 0, 0.01) 0px 5px 2px 0px, rgba(0, 0, 0, 0.04) 0px 3px 2px 0px, rgba(0, 0, 0, 0.07) 0px 1px 1px 0px, rgba(0, 0, 0, 0.08) 0px 0px 1px 0px;
-  --shadow-xl: rgba(8, 9, 10, 0.6) 0px 4px 32px 0px;
-  --shadow-subtle-4: rgba(255, 255, 255, 0.03) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.04) 0px 1px 0px 0px inset, rgba(0, 0, 0, 0.6) 0px 0px 0px 1px, rgba(0, 0, 0, 0.1) 0px 4px 4px 0px;
+  --shadow-xl: rgba(7, 13, 22, 0.8) 0px 8px 32px 0px;
+  --shadow-subtle-4: rgba(255, 255, 255, 0.04) 0px 0px 0px 1px inset, rgba(255, 255, 255, 0.05) 0px 1px 0px 0px inset, rgba(0, 0, 0, 0.6) 0px 0px 0px 1px, rgba(0, 0, 0, 0.1) 0px 4px 4px 0px;
   --shadow-subtle-5: rgba(0, 0, 0, 0.1) 0px 0px 0px 2px;
 
   /* Surfaces */
-  --surface-void: #08090a;
-  --surface-carbon: #0f1011;
-  --surface-obsidian: #161718;
-  --surface-slate: #23252a;
+  --surface-void: #070D16;
+  --surface-carbon: #0E1624;
+  --surface-obsidian: #111C2A;
+  --surface-slate: #1C293D;
 
   /* Modern Web Platform conformance */
   color-scheme: dark;
-  accent-color: var(--color-iris-violet);
+  accent-color: var(--color-signal-teal);
   scrollbar-color: var(--color-smoke) var(--color-void);
 }
 
@@ -237,7 +237,7 @@
   }
 
   ::selection {
-    background-color: rgba(99, 102, 241, 0.35);
+    background-color: rgba(25, 217, 232, 0.3);
     color: var(--color-paper);
   }
 }
@@ -280,6 +280,36 @@
   animation: ai-shimmer 1.6s infinite linear;
 }
 
+/* Neon Glow & Card Utilities */
+.neon-glow-cyan {
+  box-shadow: 0 0 15px rgba(25, 217, 232, 0.35);
+}
+
+.neon-glow-purple {
+  box-shadow: 0 0 15px rgba(168, 85, 247, 0.35);
+}
+
+.neon-glow-green {
+  box-shadow: 0 0 15px rgba(48, 217, 155, 0.35);
+}
+
+.neon-card {
+  background-color: #111C2A;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.neon-card:hover {
+  border-color: rgba(25, 217, 232, 0.35);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5), 0 0 16px rgba(25, 217, 232, 0.08);
+}
+
+.outer-neon-frame {
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 0 50px -10px rgba(25, 217, 232, 0.1), 0 0 50px -10px rgba(168, 85, 247, 0.1);
+}
+
 /* Legacy Hex Color Remapping to Guarantee 100% Cohesive Surface & Token Styling */
 .bg-\[\#0B0F17\] { background-color: var(--color-void) !important; }
 .bg-\[\#0F172A\] { background-color: var(--color-carbon) !important; }
@@ -307,11 +337,11 @@
 .text-\[\#DC2626\] { color: var(--color-coral-red) !important; }
 .text-\[\#FDA4AF\] { color: var(--color-coral-red) !important; }
 .bg-\[\#2563EB\] { background-color: var(--color-iris-violet) !important; }
-.hover\:bg-\[\#1D4ED8\]:hover { background-color: #4f46e5 !important; }
+.hover\:bg-\[\#1D4ED8\]:hover { background-color: #8B5CF6 !important; }
 .border-\[\#3B82F6\] { border-color: var(--color-iris-violet) !important; }
 .text-\[\#3B82F6\] { color: var(--color-iris-violet) !important; }
 .bg-\[\#DC2626\] { background-color: var(--color-coral-red) !important; }
-.hover\:bg-\[\#B91C1C\]:hover { background-color: #dc2626 !important; }
+.hover\:bg-\[\#B91C1C\]:hover { background-color: #e11d48 !important; }
 
 /* Light Mode Theme Overrides */
 [data-theme="light"] {

@@ -18,6 +18,8 @@ import {
   Palette,
   HelpCircle,
   ShieldCheck,
+  Zap,
+  Sparkles,
 } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -125,24 +127,32 @@ export function AppShell({
     const isDashboardActive = route === 'dashboard';
 
     return (
-      <div className="flex flex-col h-full bg-carbon border-r border-graphite select-none">
+      <div className="flex flex-col h-full bg-carbon border-r border-graphite/80 select-none">
         {/* Brand header */}
-        <div className="h-14 px-4 flex items-center justify-between border-b border-graphite shrink-0">
+        <div className="h-16 px-4 flex items-center justify-between border-b border-graphite/80 shrink-0">
           <button
             type="button"
             onClick={() => {
               onNavigate('dashboard');
               if (isMobile) setMobileMenuOpen(false);
             }}
-            className="flex items-center gap-2.5 min-w-0 text-left group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-iris-violet/50 rounded-inputs p-1"
+            className="flex items-center gap-2.5 min-w-0 text-left group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-teal/50 rounded-inputs p-1"
           >
-            <div className="w-7 h-7 rounded-inputs bg-iris-violet flex items-center justify-center text-paper font-display font-bold text-xs shrink-0 shadow-sm transition-transform group-hover:scale-105">
-              AV
+            {/* Neon Glowing Logo Icon */}
+            <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-signal-teal via-iris-violet to-pulse-green p-[1.5px] shadow-[0_0_15px_rgba(25,217,232,0.35)] flex items-center justify-center shrink-0 transition-transform group-hover:scale-105">
+              <div className="w-full h-full bg-void rounded-[10px] flex items-center justify-center">
+                <Zap className="w-4 h-4 text-signal-teal" />
+              </div>
             </div>
             {(!collapsed || isMobile) && (
-              <span className="font-display font-semibold text-[15px] text-bone tracking-tight whitespace-nowrap truncate group-hover:text-paper transition-colors">
-                Agile Velocity
-              </span>
+              <div className="min-w-0">
+                <span className="font-display font-semibold text-[15px] text-bone tracking-tight whitespace-nowrap truncate group-hover:text-paper transition-colors block leading-tight">
+                  Agile Velocity
+                </span>
+                <span className="text-[10px] text-signal-teal font-mono uppercase tracking-wider block leading-tight">
+                  Scrum Manager
+                </span>
+              </div>
             )}
           </button>
 
@@ -150,7 +160,7 @@ export function AppShell({
             <button
               type="button"
               onClick={toggleCollapsed}
-              className="p-1.5 rounded-inputs text-fog hover:text-paper hover:bg-graphite transition-all shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-iris-violet/50"
+              className="p-1.5 rounded-inputs text-fog hover:text-paper hover:bg-graphite transition-all shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-teal/50"
               title={collapsed ? 'Expandir barra (Ctrl+B)' : 'Contraer barra'}
               aria-label="Alternar barra lateral"
             >
@@ -188,23 +198,21 @@ export function AppShell({
                   if (isMobile) setMobileMenuOpen(false);
                 }}
                 aria-current={isDashboardActive ? 'page' : undefined}
-                className={`relative w-full flex items-center gap-2.5 px-3 py-2 rounded-inputs text-[13px] font-medium transition-colors whitespace-nowrap group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-iris-violet/50 ${
-                  isDashboardActive ? 'text-paper' : 'text-mist hover:text-paper hover:bg-graphite/40'
+                className={`relative w-full flex items-center gap-2.5 px-3 py-2.5 rounded-inputs text-[13px] font-medium transition-all whitespace-nowrap group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-teal/50 ${
+                  isDashboardActive
+                    ? 'text-bone bg-signal-teal/10 border border-signal-teal/25 shadow-[0_0_12px_rgba(25,217,232,0.1)]'
+                    : 'text-mist hover:text-bone hover:bg-graphite/40 border border-transparent'
                 }`}
               >
-                {/* Motion sliding indicator */}
+                {/* Luminous Neon Vertical Indicator on Right Edge (signature Aether Analytics style) */}
                 {isDashboardActive && (
-                  <motion.div
-                    layoutId="activeNavIndicator"
-                    className="absolute inset-0 rounded-inputs bg-iris-violet/15 border border-iris-violet/30 shadow-subtle -z-0"
-                    transition={
-                      shouldReduceMotion
-                        ? { duration: 0 }
-                        : { type: 'spring', stiffness: 400, damping: 32 }
-                    }
-                  />
+                  <span className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-full bg-signal-teal shadow-[0_0_10px_#19D9E8]" />
                 )}
-                <LayoutGrid className="w-4 h-4 shrink-0 relative z-10 transition-transform group-hover:scale-105" />
+                <LayoutGrid
+                  className={`w-4 h-4 shrink-0 relative z-10 transition-transform group-hover:scale-105 ${
+                    isDashboardActive ? 'text-signal-teal' : 'text-fog'
+                  }`}
+                />
                 {(!collapsed || isMobile) && (
                   <span className="relative z-10 font-medium">Proyectos</span>
                 )}
@@ -227,22 +235,20 @@ export function AppShell({
                   if (isMobile) setMobileMenuOpen(false);
                 }}
                 aria-current={route === 'my-work' ? 'page' : undefined}
-                className={`relative w-full flex items-center gap-2.5 px-3 py-2 rounded-inputs text-[13px] font-medium transition-colors whitespace-nowrap group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-iris-violet/50 ${
-                  route === 'my-work' ? 'text-paper' : 'text-mist hover:text-paper hover:bg-graphite/40'
+                className={`relative w-full flex items-center gap-2.5 px-3 py-2.5 rounded-inputs text-[13px] font-medium transition-all whitespace-nowrap group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-teal/50 ${
+                  route === 'my-work'
+                    ? 'text-bone bg-signal-teal/10 border border-signal-teal/25 shadow-[0_0_12px_rgba(25,217,232,0.1)]'
+                    : 'text-mist hover:text-bone hover:bg-graphite/40 border border-transparent'
                 }`}
               >
                 {route === 'my-work' && (
-                  <motion.div
-                    layoutId="activeNavIndicator"
-                    className="absolute inset-0 rounded-inputs bg-iris-violet/15 border border-iris-violet/30 shadow-subtle -z-0"
-                    transition={
-                      shouldReduceMotion
-                        ? { duration: 0 }
-                        : { type: 'spring', stiffness: 400, damping: 32 }
-                    }
-                  />
+                  <span className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-full bg-signal-teal shadow-[0_0_10px_#19D9E8]" />
                 )}
-                <CheckSquare className="w-4 h-4 shrink-0 relative z-10 transition-transform group-hover:scale-105 text-iris-violet" />
+                <CheckSquare
+                  className={`w-4 h-4 shrink-0 relative z-10 transition-transform group-hover:scale-105 ${
+                    route === 'my-work' ? 'text-signal-teal' : 'text-iris-violet'
+                  }`}
+                />
                 {(!collapsed || isMobile) && (
                   <span className="relative z-10 font-medium">Mi Trabajo</span>
                 )}
@@ -262,8 +268,9 @@ export function AppShell({
             <div className="space-y-1.5">
               {(!collapsed || isMobile) && (
                 <div className="px-3 pb-1">
-                  <p className="text-[11px] font-semibold text-fog truncate uppercase tracking-wider">
-                    {currentProject.name}
+                  <p className="text-[11px] font-semibold text-fog truncate uppercase tracking-wider flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-signal-teal shadow-[0_0_6px_#19D9E8]" />
+                    <span className="truncate">{currentProject.name}</span>
                   </p>
                 </div>
               )}
@@ -280,25 +287,20 @@ export function AppShell({
                         if (isMobile) setMobileMenuOpen(false);
                       }}
                       aria-current={active ? 'page' : undefined}
-                      className={`relative w-full flex items-center gap-2.5 px-3 py-2 rounded-inputs text-[13px] font-medium transition-colors whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-iris-violet/50 ${
+                      className={`relative w-full flex items-center gap-2.5 px-3 py-2.5 rounded-inputs text-[13px] font-medium transition-all whitespace-nowrap focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-teal/50 ${
                         active
-                          ? 'text-paper'
-                          : 'text-mist hover:text-paper hover:bg-graphite/40'
+                          ? 'text-bone bg-signal-teal/10 border border-signal-teal/25 shadow-[0_0_12px_rgba(25,217,232,0.1)]'
+                          : 'text-mist hover:text-bone hover:bg-graphite/40 border border-transparent'
                       }`}
                     >
-                      {/* Motion sliding indicator */}
                       {active && (
-                        <motion.div
-                          layoutId="activeNavIndicator"
-                          className="absolute inset-0 rounded-inputs bg-iris-violet/15 border border-iris-violet/30 shadow-subtle -z-0"
-                          transition={
-                            shouldReduceMotion
-                              ? { duration: 0 }
-                              : { type: 'spring', stiffness: 400, damping: 32 }
-                          }
-                        />
+                        <span className="absolute right-0 top-1/2 -translate-y-1/2 w-1 h-5 rounded-full bg-signal-teal shadow-[0_0_10px_#19D9E8]" />
                       )}
-                      <Icon className="w-4 h-4 shrink-0 relative z-10 transition-transform group-hover:scale-105" />
+                      <Icon
+                        className={`w-4 h-4 shrink-0 relative z-10 transition-transform group-hover:scale-105 ${
+                          active ? 'text-signal-teal' : 'text-fog'
+                        }`}
+                      />
                       {(!collapsed || isMobile) && (
                         <span className="relative z-10">{item.label}</span>
                       )}
@@ -318,7 +320,7 @@ export function AppShell({
 
           {/* Workspaces list */}
           {(!collapsed || isMobile) && projects.length > 0 && (
-            <div className="space-y-1 pt-2 border-t border-graphite">
+            <div className="space-y-1 pt-3 border-t border-graphite/70">
               <p className="px-3 py-1 text-[11px] font-semibold text-fog uppercase tracking-wider">
                 Espacios de trabajo
               </p>
@@ -332,14 +334,14 @@ export function AppShell({
                       onNavigate(route === 'dashboard' ? 'kanban' : route, p.id);
                       if (isMobile) setMobileMenuOpen(false);
                     }}
-                    className={`w-full flex items-center justify-between px-3 py-1.5 rounded-inputs text-[12px] transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-iris-violet/50 ${
+                    className={`w-full flex items-center justify-between px-3 py-2 rounded-inputs text-[12px] transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-teal/50 ${
                       isSelected
-                        ? 'text-paper bg-obsidian border border-graphite shadow-xs'
-                        : 'text-fog hover:text-mist hover:bg-obsidian/60'
+                        ? 'text-paper bg-obsidian border border-signal-teal/30 shadow-[0_0_10px_rgba(25,217,232,0.15)] font-semibold'
+                        : 'text-fog hover:text-mist hover:bg-obsidian/60 border border-transparent'
                     }`}
                   >
                     <span className="truncate">{p.name}</span>
-                    <span className="font-mono text-[10px] text-ash ml-2 shrink-0">
+                    <span className="font-mono text-[10px] text-signal-teal bg-signal-teal/10 px-1.5 py-0.5 rounded ml-2 shrink-0 border border-signal-teal/20">
                       {p.code}
                     </span>
                   </button>
@@ -349,15 +351,46 @@ export function AppShell({
           )}
         </nav>
 
+        {/* Bottom Glowing Sprint / Velocity Card (Inspired by Aether Analytics "Upgrade to Pro" card) */}
+        {(!collapsed || isMobile) && (
+          <div className="p-3 mx-2.5 mb-3 rounded-2xl bg-gradient-to-br from-iris-violet/20 via-obsidian to-carbon border border-iris-violet/35 shadow-[0_0_20px_rgba(168,85,247,0.15)] relative overflow-hidden shrink-0">
+            <div className="flex items-center gap-2 mb-1.5">
+              <div className="w-5 h-5 rounded-md bg-iris-violet/25 flex items-center justify-center text-iris-violet shadow-[0_0_8px_rgba(168,85,247,0.3)]">
+                <Sparkles className="w-3.5 h-3.5" />
+              </div>
+              <span className="text-[12px] font-semibold text-bone">Agile Velocity Pro</span>
+            </div>
+            <p className="text-[11px] text-fog leading-relaxed mb-3">
+              {currentProject?.activeSprint
+                ? `Sprint activo: ${currentProject.activeSprint.name}`
+                : 'Gestión de Sprints, asistencia IA y métricas en tiempo real.'}
+            </p>
+            <button
+              type="button"
+              onClick={() => {
+                if (currentProject) onNavigate('kanban', currentProject.id);
+                else onNavigate('dashboard');
+              }}
+              className="w-full flex items-center justify-between px-3 py-1.5 rounded-inputs bg-gradient-to-r from-iris-violet to-lavender/90 hover:from-iris-violet/90 hover:to-lavender text-paper text-[11px] font-semibold shadow-[0_0_12px_rgba(168,85,247,0.4)] transition-all group"
+            >
+              <span>{currentProject ? 'Ver Tablero' : 'Explorar'}</span>
+              <ChevronRight className="w-3.5 h-3.5 transition-transform group-hover:translate-x-0.5" />
+            </button>
+          </div>
+        )}
+
         {/* User profile footer */}
         {user && (
-          <div className="p-3 border-t border-graphite shrink-0">
+          <div className="p-3 border-t border-graphite/80 shrink-0 bg-carbon">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2.5 min-w-0">
-                <UserAvatar name={user.fullName} size="md" />
+                <div className="relative shrink-0">
+                  <UserAvatar name={user.fullName} size="md" />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-pulse-green ring-2 ring-carbon shadow-[0_0_6px_#30D99B]" />
+                </div>
                 {(!collapsed || isMobile) && (
                   <div className="min-w-0">
-                    <p className="text-[13px] font-medium text-bone truncate">{user.fullName}</p>
+                    <p className="text-[13px] font-semibold text-bone truncate">{user.fullName}</p>
                     <p className="text-[11px] text-fog truncate">
                       {currentProject
                         ? formatRoleLabel(currentProject.myRole)
@@ -385,11 +418,11 @@ export function AppShell({
   };
 
   return (
-    <div className="min-h-screen bg-void text-mist flex selection:bg-iris-violet/30">
+    <div className="min-h-screen bg-void text-mist flex selection:bg-signal-teal/30">
       {/* Desktop Sidebar with animated width */}
       <aside
         className={`hidden md:block shrink-0 transition-[width] duration-200 ease-in-out ${
-          collapsed ? 'w-16' : 'w-60'
+          collapsed ? 'w-16' : 'w-64'
         }`}
       >
         <div className="sticky top-0 h-screen">{renderSidebarContent(false)}</div>
@@ -405,7 +438,7 @@ export function AppShell({
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.15 }}
-              className="fixed inset-0 bg-void/80 backdrop-blur-sm"
+              className="fixed inset-0 bg-void/85 backdrop-blur-md"
               onClick={() => setMobileMenuOpen(false)}
               aria-hidden="true"
             />
@@ -423,15 +456,15 @@ export function AppShell({
         )}
       </AnimatePresence>
 
-      {/* Main Content Shell */}
+      {/* Main Content Shell with Outer Subtle Glow Frame */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Top Navigation Bar */}
-        <header className="sticky top-0 z-30 h-14 bg-void/90 backdrop-blur-md border-b border-graphite px-4 sm:px-6 flex items-center justify-between gap-4">
+        <header className="sticky top-0 z-30 h-16 bg-void/90 backdrop-blur-md border-b border-graphite/80 px-4 sm:px-6 flex items-center justify-between gap-4">
           <div className="flex items-center gap-3 min-w-0">
             <button
               type="button"
               onClick={() => setMobileMenuOpen(true)}
-              className="md:hidden p-1.5 rounded-inputs text-mist hover:text-paper hover:bg-graphite transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-iris-violet/50"
+              className="md:hidden p-1.5 rounded-inputs text-mist hover:text-paper hover:bg-graphite transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-teal/50"
               aria-label="Abrir navegación móvil"
             >
               <Menu className="w-5 h-5" />
@@ -467,15 +500,16 @@ export function AppShell({
 
           {/* Quick Actions & Notifications */}
           <div className="flex items-center gap-2.5 shrink-0">
+            {/* Integrated Search Bar styled like Aether Analytics */}
             <button
               type="button"
               onClick={onOpenCommandPalette}
-              className="hidden sm:inline-flex items-center gap-2 px-3 py-1.5 rounded-inputs bg-carbon border border-graphite hover:border-smoke text-[12px] text-fog hover:text-mist transition-all whitespace-nowrap shrink-0 shadow-subtle hover:bg-graphite/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-iris-violet/50"
+              className="hidden sm:inline-flex items-center gap-2.5 px-3.5 py-1.5 rounded-inputs bg-carbon border border-graphite hover:border-signal-teal/40 text-[12px] text-fog hover:text-mist transition-all whitespace-nowrap shrink-0 shadow-subtle hover:bg-graphite/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-teal/50"
               title="Abrir paleta de comandos"
             >
-              <Search className="w-3.5 h-3.5 text-fog" />
+              <Search className="w-3.5 h-3.5 text-signal-teal" />
               <span>Buscar o navegar</span>
-              <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded-sm bg-graphite text-mist border border-graphite/80">
+              <kbd className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-graphite/90 text-signal-teal border border-graphite/80 shadow-xs">
                 {isMac ? '⌘K' : 'Ctrl K'}
               </kbd>
             </button>
@@ -485,7 +519,7 @@ export function AppShell({
               <button
                 type="button"
                 onClick={onOpenThemeModal}
-                className="p-2 rounded-inputs bg-carbon border border-graphite hover:border-smoke text-mist hover:text-paper transition-all shadow-subtle hover:bg-graphite/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-iris-violet/50"
+                className="p-2 rounded-inputs bg-carbon border border-graphite hover:border-smoke text-mist hover:text-paper transition-all shadow-subtle hover:bg-graphite/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-teal/50"
                 title="Personalización y apariencia"
                 aria-label="Abrir personalización y tema visual"
               >
@@ -498,7 +532,7 @@ export function AppShell({
               <button
                 type="button"
                 onClick={onOpenOnboarding}
-                className="p-2 rounded-inputs bg-carbon border border-graphite hover:border-smoke text-mist hover:text-paper transition-all shadow-subtle hover:bg-graphite/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-iris-violet/50"
+                className="p-2 rounded-inputs bg-carbon border border-graphite hover:border-smoke text-mist hover:text-paper transition-all shadow-subtle hover:bg-graphite/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-teal/50"
                 title="Guía interactiva Scrum (Onboarding)"
                 aria-label="Abrir tutorial interactivo de Scrum"
               >
@@ -511,7 +545,7 @@ export function AppShell({
               <button
                 type="button"
                 onClick={onOpenAuditModal}
-                className="p-2 rounded-inputs bg-carbon border border-graphite hover:border-smoke text-mist hover:text-paper transition-all shadow-subtle hover:bg-graphite/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-iris-violet/50"
+                className="p-2 rounded-inputs bg-carbon border border-graphite hover:border-smoke text-mist hover:text-paper transition-all shadow-subtle hover:bg-graphite/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-teal/50"
                 title="Registro de Auditoría y Seguridad (RNF-06)"
                 aria-label="Abrir registro de auditoría"
               >
@@ -524,13 +558,13 @@ export function AppShell({
               <button
                 type="button"
                 onClick={() => setNotifOpen((o) => !o)}
-                className="relative p-2 rounded-inputs bg-carbon border border-graphite hover:border-smoke text-mist hover:text-paper transition-all shadow-subtle hover:bg-graphite/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-iris-violet/50"
+                className="relative p-2 rounded-inputs bg-carbon border border-graphite hover:border-smoke text-mist hover:text-paper transition-all shadow-subtle hover:bg-graphite/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-teal/50"
                 aria-label={`Notificaciones ${unreadCount > 0 ? `(${unreadCount} no leídas)` : ''}`}
                 aria-expanded={notifOpen}
               >
                 <Bell className="w-4 h-4 transition-transform hover:scale-105" />
                 {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-pills bg-iris-violet text-paper font-mono text-[10px] font-bold flex items-center justify-center shadow-md animate-pulse">
+                  <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-pills bg-coral-red text-paper font-mono text-[10px] font-bold flex items-center justify-center shadow-[0_0_8px_#F43F5E] animate-pulse">
                     {unreadCount}
                   </span>
                 )}
@@ -592,7 +626,7 @@ export function AppShell({
                               type="button"
                               onClick={() => onMarkNotificationsRead(n.id)}
                               className={`w-full text-left px-4 py-3 hover:bg-graphite/40 transition-colors ${
-                                n.readStatus ? 'opacity-60' : 'bg-iris-violet/5'
+                                n.readStatus ? 'opacity-60' : 'bg-signal-teal/5'
                               }`}
                             >
                               <p className="text-[12px] text-mist leading-5">{n.message}</p>
@@ -613,6 +647,24 @@ export function AppShell({
                 )}
               </AnimatePresence>
             </div>
+
+            {/* User Profile Pill in Topbar (Inspired by Olivia Rhye pill in Aether Analytics) */}
+            {user && (
+              <div className="hidden lg:flex items-center gap-2 pl-2 border-l border-graphite/80">
+                <div className="relative">
+                  <UserAvatar name={user.fullName} size="sm" />
+                  <span className="absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full bg-pulse-green ring-2 ring-void shadow-[0_0_6px_#30D99B]" />
+                </div>
+                <div className="min-w-0 text-left">
+                  <p className="text-[12px] font-semibold text-bone leading-tight truncate">
+                    {user.fullName}
+                  </p>
+                  <span className="inline-block px-1.5 py-0.2 rounded text-[10px] font-medium bg-iris-violet/15 text-lavender border border-iris-violet/25">
+                    {user.globalRole === 'ADMIN' ? 'Admin' : currentProject ? formatRoleLabel(currentProject.myRole) : 'Scrum'}
+                  </span>
+                </div>
+              </div>
+            )}
 
             {primaryAction && <div className="shrink-0">{primaryAction}</div>}
           </div>

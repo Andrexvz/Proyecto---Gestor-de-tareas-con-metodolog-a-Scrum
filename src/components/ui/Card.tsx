@@ -14,11 +14,11 @@ export function Card({
   ...props
 }: CardProps) {
   const variantStyles: Record<CardVariant, string> = {
-    default: 'bg-obsidian border-graphite shadow-subtle',
-    carbon: 'bg-carbon border-graphite shadow-subtle',
+    default: 'bg-obsidian border-graphite/70 shadow-[0_4px_24px_rgba(0,0,0,0.35)]',
+    carbon: 'bg-carbon border-graphite/70 shadow-[0_4px_24px_rgba(0,0,0,0.35)]',
     interactive:
-      'bg-obsidian border-graphite hover:border-smoke hover:bg-graphite/30 transition-all duration-150 cursor-pointer active:scale-[0.99] shadow-subtle',
-    outline: 'bg-transparent border-graphite',
+      'bg-obsidian border-graphite/70 hover:border-signal-teal/40 hover:shadow-[0_8px_30px_rgba(0,0,0,0.5),0_0_20px_rgba(25,217,232,0.08)] transition-all duration-200 cursor-pointer active:scale-[0.99]',
+    outline: 'bg-transparent border-graphite/70',
   };
 
   return (
@@ -42,7 +42,7 @@ export function CardHeader({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn('px-5 py-4 border-b border-graphite flex items-center justify-between gap-3', className)}
+      className={cn('px-5 py-4 border-b border-graphite/70 flex items-center justify-between gap-3', className)}
       {...props}
     >
       {children}
@@ -96,7 +96,7 @@ export function CardFooter({
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
     <div
-      className={cn('px-5 py-3.5 border-t border-graphite flex items-center justify-end gap-2.5', className)}
+      className={cn('px-5 py-3.5 border-t border-graphite/70 flex items-center justify-end gap-2.5', className)}
       {...props}
     >
       {children}

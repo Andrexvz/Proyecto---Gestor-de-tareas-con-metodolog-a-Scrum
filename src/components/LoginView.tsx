@@ -176,14 +176,16 @@ export function LoginView() {
         />
 
         <div className="relative z-10 flex items-center gap-3">
-          <div className="w-10 h-10 rounded-inputs bg-iris-violet flex items-center justify-center text-paper font-display font-bold text-base shadow-sm ring-1 ring-lavender/30">
-            AV
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-tr from-signal-teal via-iris-violet to-pulse-green p-[1.5px] shadow-[0_0_16px_rgba(25,217,232,0.4)] flex items-center justify-center shrink-0">
+            <div className="w-full h-full bg-void rounded-[10px] flex items-center justify-center">
+              <Zap className="w-5 h-5 text-signal-teal" />
+            </div>
           </div>
           <div>
             <span className="font-display text-lg font-semibold tracking-tight text-bone block leading-none">
               Agile Velocity
             </span>
-            <span className="text-[11px] text-fog font-mono">Scrum Management Suite</span>
+            <span className="text-[11px] text-signal-teal font-mono">Scrum Management Suite</span>
           </div>
         </div>
 

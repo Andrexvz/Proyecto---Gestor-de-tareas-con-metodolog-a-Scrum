@@ -31,17 +31,17 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
   ) => {
     const variantStyles: Record<ButtonVariant, string> = {
       primary:
-        'bg-iris-violet hover:bg-iris-violet/90 text-paper border border-iris-violet/30 shadow-sm active:scale-[0.98]',
+        'bg-iris-violet hover:bg-iris-violet/90 text-paper border border-iris-violet/30 shadow-[0_0_15px_rgba(168,85,247,0.35)] active:scale-[0.98]',
       secondary:
-        'bg-graphite hover:bg-smoke text-bone border border-graphite hover:border-smoke active:scale-[0.98]',
+        'bg-graphite hover:bg-smoke text-bone border border-graphite/80 hover:border-smoke active:scale-[0.98]',
       outline:
-        'bg-transparent hover:bg-graphite/40 text-mist hover:text-paper border border-graphite hover:border-smoke active:scale-[0.98]',
+        'bg-transparent hover:bg-graphite/40 text-mist hover:text-paper border border-graphite/80 hover:border-smoke active:scale-[0.98]',
       ghost:
         'bg-transparent hover:bg-graphite/40 text-mist hover:text-paper active:scale-[0.98]',
       danger:
-        'bg-coral-red hover:bg-coral-red/90 text-paper border border-coral-red/30 shadow-sm active:scale-[0.98]',
+        'bg-coral-red hover:bg-coral-red/90 text-paper border border-coral-red/30 shadow-[0_0_15px_rgba(244,63,94,0.35)] active:scale-[0.98]',
       accent:
-        'bg-signal-teal hover:bg-signal-teal/90 text-void font-semibold border border-signal-teal/40 shadow-sm active:scale-[0.98]',
+        'bg-signal-teal hover:bg-signal-teal/90 text-void font-semibold border border-signal-teal/40 shadow-[0_0_15px_rgba(25,217,232,0.4)] active:scale-[0.98]',
     };
 
     const sizeStyles: Record<ButtonSize, string> = {
@@ -60,7 +60,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
         disabled={isDisabled}
         className={cn(
           'inline-flex items-center justify-center font-medium whitespace-nowrap select-none cursor-pointer',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-iris-violet/60 focus-visible:ring-offset-2 focus-visible:ring-offset-void',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-teal/60 focus-visible:ring-offset-2 focus-visible:ring-offset-void',
           'motion-safe:transition-all motion-reduce:transition-none duration-150',
           'disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 disabled:hover:bg-inherit',
           variantStyles[variant],

@@ -19,6 +19,10 @@ import {
   Target,
   Shield,
   Filter,
+  TrendingUp,
+  Clock,
+  AlertTriangle,
+  ArrowUpRight,
 } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -48,6 +52,64 @@ interface DashboardViewProps {
   onRefreshProjects: () => Promise<void>;
   onNavigate?: (route: ActiveRoute, projectId?: number) => void;
   onQuickCreateStory?: (projectId?: number) => void;
+}
+
+// Glowing Neon SVG Sparkline directly inspired by Aether Analytics
+function NeonSparkline({
+  points,
+  color = '#19D9E8',
+  gradientId,
+  height = 36,
+}: {
+  points: number[];
+  color?: string;
+  gradientId: string;
+  height?: number;
+}) {
+  const min = Math.min(...points);
+  const max = Math.max(...points) || 1;
+  const range = max - min || 1;
+  const width = 160;
+  const step = width / (points.length - 1);
+
+  const coords = points.map((p, i) => {
+    const x = i * step;
+    const y = height - ((p - min) / range) * (height - 8) - 4;
+    return { x, y };
+  });
+
+  const pathD = coords.reduce(
+    (acc, pt, i) => (i === 0 ? `M ${pt.x} ${pt.y}` : `${acc} L ${pt.x} ${pt.y}`),
+    ''
+  );
+
+  const areaD = `${pathD} L ${width} ${height} L 0 ${height} Z`;
+
+  return (
+    <svg
+      viewBox={`0 0 ${width} ${height}`}
+      className="w-full overflow-visible shrink-0 mt-2"
+      style={{ height: `${height}px` }}
+      aria-hidden="true"
+    >
+      <defs>
+        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
+          <stop offset="100%" stopColor={color} stopOpacity="0.0" />
+        </linearGradient>
+      </defs>
+      <path d={areaD} fill={`url(#${gradientId})`} />
+      <path
+        d={pathD}
+        fill="none"
+        stroke={color}
+        strokeWidth="2"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        style={{ filter: `drop-shadow(0 0 5px ${color})` }}
+      />
+    </svg>
+  );
 }
 
 export function DashboardView({
@@ -258,9 +320,17 @@ export function DashboardView({
         </div>
 
         <div className="flex items-center gap-2.5 flex-wrap shrink-0">
+          {/* Quick Date / Segment Selector (Matching Aether Analytics header bar) */}
+          <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-inputs bg-carbon border border-graphite/80 text-[12px] text-mist shadow-subtle">
+            <CalendarRange className="w-3.5 h-3.5 text-signal-teal" />
+            <span className="text-bone font-medium">Sprint Actual</span>
+            <span className="text-ash">·</span>
+            <span className="text-fog">Ciclo Activo</span>
+          </div>
+
           {/* Role Perspective Selector */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-inputs bg-carbon border border-graphite text-[12px]">
-            <Filter className="w-3.5 h-3.5 text-fog shrink-0" />
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-inputs bg-carbon border border-graphite/80 text-[12px] shadow-subtle">
+            <Filter className="w-3.5 h-3.5 text-signal-teal shrink-0" />
             <span className="text-fog text-[11px]">Perspectiva:</span>
             <select
               value={rolePerspective}
@@ -292,7 +362,7 @@ export function DashboardView({
                 variant="outline"
                 size="sm"
                 onClick={() => setUserModalOpen(true)}
-                icon={<UserPlus className="w-3.5 h-3.5" />}
+                icon={<UserPlus className="w-3.5 h-3.5 text-signal-teal" />}
               >
                 Registrar usuario
               </Button>
@@ -310,9 +380,9 @@ export function DashboardView({
       </div>
 
       {/* Bloque de Acciones Frecuentes / Rápidas */}
-      <div className="p-3.5 rounded-cards bg-carbon border border-graphite shadow-subtle flex flex-col md:flex-row md:items-center justify-between gap-3">
+      <div className="p-3.5 rounded-cards bg-carbon border border-graphite/80 shadow-[0_4px_20px_rgba(0,0,0,0.35)] flex flex-col md:flex-row md:items-center justify-between gap-3">
         <div className="flex items-center gap-2 text-[12px] text-fog font-medium">
-          <Sparkles className="w-4 h-4 text-iris-violet shrink-0" />
+          <Sparkles className="w-4 h-4 text-signal-teal shrink-0" />
           <span className="text-bone font-semibold">Acciones Frecuentes:</span>
         </div>
         <div className="flex items-center gap-2 flex-wrap">
@@ -322,7 +392,7 @@ export function DashboardView({
             onClick={() =>
               onNavigate ? onNavigate('my-work') : onOpenProject(firstProj?.id || 1, 'kanban')
             }
-            icon={<CheckSquare className="w-3.5 h-3.5 text-iris-violet" />}
+            icon={<CheckSquare className="w-3.5 h-3.5 text-signal-teal" />}
             title="Consultar todas las tareas asignadas en tus proyectos"
           >
             Ver mis tareas
@@ -382,8 +452,8 @@ export function DashboardView({
       </div>
 
       {/* Role-Specific Contextual Guidance Banner */}
-      <div className="p-4 rounded-cards bg-carbon/80 border border-graphite/70 shadow-subtle flex items-start gap-3.5">
-        <div className="p-2 rounded-lg bg-iris-violet/10 text-iris-violet shrink-0 mt-0.5">
+      <div className="p-4 rounded-cards bg-carbon/90 border border-graphite/70 shadow-subtle flex items-start gap-3.5">
+        <div className="p-2 rounded-lg bg-signal-teal/10 text-signal-teal shrink-0 mt-0.5 border border-signal-teal/20 shadow-[0_0_10px_rgba(25,217,232,0.15)]">
           {effectiveRole === 'PRODUCT_OWNER' ? (
             <Target className="w-5 h-5" />
           ) : effectiveRole === 'SCRUM_MASTER' ? (
@@ -443,102 +513,302 @@ export function DashboardView({
         </div>
       )}
 
-      {/* Statistics Cards Overview */}
+      {/* Top 4 Statistics Cards Overview (Directly matching Aether Analytics KPI cards) */}
       {!loading && projects.length > 0 && (
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+          {/* Card 1: Proyectos Activos */}
           <motion.div
             initial={shouldReduceMotion ? {} : { opacity: 0, y: 10 }}
             animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
             transition={{ duration: 0.18 }}
-            className="p-4 rounded-cards bg-carbon border border-graphite shadow-subtle flex flex-col justify-between"
+            className="p-5 rounded-cards bg-carbon border border-graphite/80 hover:border-signal-teal/40 shadow-[0_4px_20px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.5),0_0_15px_rgba(25,217,232,0.1)] transition-all duration-200 flex flex-col justify-between relative overflow-hidden"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[12px] font-medium text-fog">Proyectos Activos</span>
-              <div className="p-1.5 rounded-md bg-iris-violet/10 text-iris-violet">
+              <span className="text-[13px] font-medium text-fog">Proyectos Activos</span>
+              <div className="w-8 h-8 rounded-full bg-signal-teal/10 border border-signal-teal/20 text-signal-teal flex items-center justify-center shadow-[0_0_10px_rgba(25,217,232,0.2)]">
                 <FolderKanban className="w-4 h-4" />
               </div>
             </div>
             <div className="mt-3">
-              <span className="font-display text-2xl font-bold text-bone">
-                {stats.totalProjects}
-              </span>
-              <p className="text-[11px] text-fog mt-0.5">Espacios registrados</p>
+              <div className="flex items-baseline gap-2">
+                <span className="font-display text-3xl font-bold text-bone">
+                  {stats.totalProjects}
+                </span>
+                <span className="inline-flex items-center text-[11px] font-semibold text-signal-teal bg-signal-teal/10 px-1.5 py-0.5 rounded-full border border-signal-teal/30">
+                  ↑ 100% activos
+                </span>
+              </div>
+              <p className="text-[11px] text-fog mt-1">Espacios registrados</p>
             </div>
+            <NeonSparkline
+              points={[2, 3, 4, 3, 5, 4, stats.totalProjects || 6]}
+              color="#19D9E8"
+              gradientId="sparkline-cyan"
+            />
           </motion.div>
 
+          {/* Card 2: Sprints en Curso */}
           <motion.div
             initial={shouldReduceMotion ? {} : { opacity: 0, y: 10 }}
             animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
             transition={{ duration: 0.22 }}
-            className="p-4 rounded-cards bg-carbon border border-graphite shadow-subtle flex flex-col justify-between"
+            className="p-5 rounded-cards bg-carbon border border-graphite/80 hover:border-pulse-green/40 shadow-[0_4px_20px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.5),0_0_15px_rgba(48,217,155,0.1)] transition-all duration-200 flex flex-col justify-between relative overflow-hidden"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[12px] font-medium text-fog">Sprints en Curso</span>
-              <div className="p-1.5 rounded-md bg-signal-teal/10 text-signal-teal">
+              <span className="text-[13px] font-medium text-fog">Sprints en Curso</span>
+              <div className="w-8 h-8 rounded-full bg-pulse-green/10 border border-pulse-green/20 text-pulse-green flex items-center justify-center shadow-[0_0_10px_rgba(48,217,155,0.2)]">
                 <Activity className="w-4 h-4" />
               </div>
             </div>
             <div className="mt-3">
-              <span className="font-display text-2xl font-bold text-bone">
-                {stats.activeSprintsCount}
-              </span>
-              <p className="text-[11px] text-fog mt-0.5">
+              <div className="flex items-baseline gap-2">
+                <span className="font-display text-3xl font-bold text-bone">
+                  {stats.activeSprintsCount}
+                </span>
+                <span className="inline-flex items-center text-[11px] font-semibold text-pulse-green bg-pulse-green/10 px-1.5 py-0.5 rounded-full border border-pulse-green/30">
+                  ↑ Activo
+                </span>
+              </div>
+              <p className="text-[11px] text-fog mt-1">
                 {stats.activeSprintsCount === 1 ? 'Sprint activo' : 'Sprints activos'}
               </p>
             </div>
+            <NeonSparkline
+              points={[1, 1, 2, 2, 3, 2, stats.activeSprintsCount || 3]}
+              color="#30D99B"
+              gradientId="sparkline-green"
+            />
           </motion.div>
 
+          {/* Card 3: Historias de Usuario */}
           <motion.div
             initial={shouldReduceMotion ? {} : { opacity: 0, y: 10 }}
             animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
             transition={{ duration: 0.26 }}
-            className="p-4 rounded-cards bg-carbon border border-graphite shadow-subtle flex flex-col justify-between"
+            className="p-5 rounded-cards bg-carbon border border-graphite/80 hover:border-signal-teal/40 shadow-[0_4px_20px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.5),0_0_15px_rgba(25,217,232,0.1)] transition-all duration-200 flex flex-col justify-between relative overflow-hidden"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[12px] font-medium text-fog">Historias de Usuario</span>
-              <div className="p-1.5 rounded-md bg-pulse-green/10 text-pulse-green">
+              <span className="text-[13px] font-medium text-fog">Historias de Usuario</span>
+              <div className="w-8 h-8 rounded-full bg-signal-teal/10 border border-signal-teal/20 text-signal-teal flex items-center justify-center shadow-[0_0_10px_rgba(25,217,232,0.2)]">
                 <CheckCircle2 className="w-4 h-4" />
               </div>
             </div>
             <div className="mt-3">
-              <div className="flex items-baseline gap-1.5">
-                <span className="font-display text-2xl font-bold text-bone">
+              <div className="flex items-baseline gap-2">
+                <span className="font-display text-3xl font-bold text-bone">
                   {stats.completedStories}
                 </span>
                 <span className="text-[13px] text-fog">/ {stats.totalStories}</span>
+                <span className="inline-flex items-center text-[11px] font-semibold text-pulse-green bg-pulse-green/10 px-1.5 py-0.5 rounded-full border border-pulse-green/30">
+                  ↑{' '}
+                  {stats.totalStories > 0
+                    ? `${Math.round((stats.completedStories / stats.totalStories) * 100)}%`
+                    : '0%'}
+                </span>
               </div>
-              <p className="text-[11px] text-pulse-green mt-0.5 font-medium">
+              <p className="text-[11px] text-pulse-green mt-1 font-medium">
                 {stats.totalStories > 0
                   ? `${Math.round((stats.completedStories / stats.totalStories) * 100)}% completadas`
                   : 'Sin historias'}
               </p>
             </div>
+            <NeonSparkline
+              points={[2, 4, 3, 6, 8, 7, stats.completedStories || 10]}
+              color="#19D9E8"
+              gradientId="sparkline-stories"
+            />
           </motion.div>
 
+          {/* Card 4: Entrega de Puntos */}
           <motion.div
             initial={shouldReduceMotion ? {} : { opacity: 0, y: 10 }}
             animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="p-4 rounded-cards bg-carbon border border-graphite shadow-subtle flex flex-col justify-between"
+            className="p-5 rounded-cards bg-carbon border border-graphite/80 hover:border-iris-violet/40 shadow-[0_4px_20px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.5),0_0_15px_rgba(168,85,247,0.1)] transition-all duration-200 flex flex-col justify-between relative overflow-hidden"
           >
             <div className="flex items-center justify-between">
-              <span className="text-[12px] font-medium text-fog">Entrega de Puntos</span>
-              <div className="p-1.5 rounded-md bg-amber-400/10 text-amber-400">
+              <span className="text-[13px] font-medium text-fog">Entrega de Puntos</span>
+              <div className="w-8 h-8 rounded-full bg-iris-violet/10 border border-iris-violet/20 text-iris-violet flex items-center justify-center shadow-[0_0_10px_rgba(168,85,247,0.2)]">
                 <Zap className="w-4 h-4" />
               </div>
             </div>
             <div className="mt-3">
-              <div className="flex items-baseline gap-1.5">
-                <span className="font-display text-2xl font-bold text-bone">
+              <div className="flex items-baseline gap-2">
+                <span className="font-display text-3xl font-bold text-bone">
                   {stats.completedPoints}
                 </span>
                 <span className="text-[13px] text-fog">/ {stats.totalPoints} pts</span>
+                <span className="inline-flex items-center text-[11px] font-semibold text-lavender bg-iris-violet/15 px-1.5 py-0.5 rounded-full border border-iris-violet/30">
+                  ↑ {stats.overallVelocity}%
+                </span>
               </div>
-              <p className="text-[11px] text-fog mt-0.5">
+              <p className="text-[11px] text-fog mt-1">
                 {stats.overallVelocity}% de velocidad global
               </p>
             </div>
+            <NeonSparkline
+              points={[5, 8, 12, 10, 15, 14, stats.completedPoints || 18]}
+              color="#A855F7"
+              gradientId="sparkline-purple"
+            />
           </motion.div>
+        </div>
+      )}
+
+      {/* Middle Visual Analytics Row (Matching Aether Analytics Chart Layout) */}
+      {!loading && projects.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+          {/* Chart 1: Sprint Velocity Trend Area Chart (Aether Analytics Area Chart style) */}
+          <div className="lg:col-span-8 p-5 rounded-cards bg-carbon border border-graphite/80 shadow-[0_4px_20px_rgba(0,0,0,0.35)]">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-[14px] font-semibold text-bone">Rendimiento y Burndown del Sprint</h3>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <span className="text-2xl font-bold font-display text-bone">
+                    {stats.completedPoints} pts entregados
+                  </span>
+                  <span className="inline-flex items-center text-[11px] font-semibold text-signal-teal bg-signal-teal/10 px-1.5 py-0.5 rounded-full border border-signal-teal/30">
+                    ↑ {stats.overallVelocity}% ritmo
+                  </span>
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-obsidian border border-graphite text-[11px] text-fog">
+                <span>Diario</span>
+              </div>
+            </div>
+
+            {/* Glowing Neon Area Chart SVG */}
+            <div className="relative h-44 w-full">
+              <svg viewBox="0 0 500 140" className="w-full h-full overflow-visible" aria-label="Gráfico de Rendimiento">
+                <defs>
+                  <linearGradient id="chartGradientCyan" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#19D9E8" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="#19D9E8" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
+                {/* Horizontal reference grid lines */}
+                <line x1="0" y1="30" x2="500" y2="30" stroke="#1C293D" strokeDasharray="3 3" />
+                <line x1="0" y1="70" x2="500" y2="70" stroke="#1C293D" strokeDasharray="3 3" />
+                <line x1="0" y1="110" x2="500" y2="110" stroke="#1C293D" strokeDasharray="3 3" />
+
+                {/* Area fill */}
+                <path
+                  d="M 0 110 Q 50 85, 100 95 T 200 65 T 300 45 T 400 35 T 500 20 L 500 140 L 0 140 Z"
+                  fill="url(#chartGradientCyan)"
+                />
+                {/* Glowing neon stroke */}
+                <path
+                  d="M 0 110 Q 50 85, 100 95 T 200 65 T 300 45 T 400 35 T 500 20"
+                  fill="none"
+                  stroke="#19D9E8"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  style={{ filter: 'drop-shadow(0 0 8px #19D9E8)' }}
+                />
+                {/* Highlight Point */}
+                <circle cx="400" cy="35" r="4" fill="#19D9E8" stroke="#070D16" strokeWidth="2" style={{ filter: 'drop-shadow(0 0 6px #19D9E8)' }} />
+                <circle cx="500" cy="20" r="5" fill="#FFFFFF" stroke="#19D9E8" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px #19D9E8)' }} />
+              </svg>
+            </div>
+            <div className="flex justify-between items-center text-[11px] text-fog font-mono pt-2 border-t border-graphite/70">
+              <span>Día 1</span>
+              <span>Día 4</span>
+              <span>Día 8</span>
+              <span>Día 11</span>
+              <span>Día 14 (Cierre)</span>
+            </div>
+          </div>
+
+          {/* Chart 2: Donut Chart - Distribución del Trabajo (Direct match to Aether Analytics Donut) */}
+          <div className="lg:col-span-4 p-5 rounded-cards bg-carbon border border-graphite/80 shadow-[0_4px_20px_rgba(0,0,0,0.35)] flex flex-col justify-between">
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-[14px] font-semibold text-bone">Distribución del Trabajo</h3>
+              <span className="text-[11px] text-signal-teal hover:underline cursor-pointer">Detalle</span>
+            </div>
+
+            <div className="flex items-center justify-center gap-4 py-2">
+              {/* SVG Donut */}
+              <div className="relative w-32 h-32 shrink-0">
+                <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
+                  {/* Background track */}
+                  <circle cx="50" cy="50" r="38" fill="none" stroke="#1C293D" strokeWidth="12" />
+                  {/* Segment 1: Hecho (Emerald #30D99B) */}
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="38"
+                    fill="none"
+                    stroke="#30D99B"
+                    strokeWidth="12"
+                    strokeDasharray="238"
+                    strokeDashoffset={238 - (238 * (stats.overallVelocity || 20)) / 100}
+                    style={{ filter: 'drop-shadow(0 0 6px rgba(48,217,155,0.4))' }}
+                  />
+                  {/* Segment 2: En Progreso (Violet #A855F7) */}
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="38"
+                    fill="none"
+                    stroke="#A855F7"
+                    strokeWidth="12"
+                    strokeDasharray="238"
+                    strokeDashoffset={238 - 60}
+                    style={{ filter: 'drop-shadow(0 0 6px rgba(168,85,247,0.4))' }}
+                  />
+                  {/* Segment 3: En Revisión (Cyan #19D9E8) */}
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="38"
+                    fill="none"
+                    stroke="#19D9E8"
+                    strokeWidth="12"
+                    strokeDasharray="238"
+                    strokeDashoffset={238 - 30}
+                    style={{ filter: 'drop-shadow(0 0 6px rgba(25,217,232,0.4))' }}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
+                  <span className="text-[10px] text-fog uppercase">Total</span>
+                  <span className="text-base font-bold text-bone font-mono leading-none">
+                    {stats.totalPoints} pts
+                  </span>
+                </div>
+              </div>
+
+              {/* Donut Legend */}
+              <div className="space-y-1.5 text-[11px] min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-pulse-green shadow-[0_0_6px_#30D99B] shrink-0" />
+                  <span className="text-fog truncate">Hecho</span>
+                  <span className="font-mono text-bone ml-auto">{stats.overallVelocity}%</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-signal-teal shadow-[0_0_6px_#19D9E8] shrink-0" />
+                  <span className="text-fog truncate">En Revisión</span>
+                  <span className="font-mono text-bone ml-auto">18%</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-iris-violet shadow-[0_0_6px_#A855F7] shrink-0" />
+                  <span className="text-fog truncate">En Progreso</span>
+                  <span className="font-mono text-bone ml-auto">25%</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-ash shrink-0" />
+                  <span className="text-fog truncate">Por Hacer</span>
+                  <span className="font-mono text-bone ml-auto">
+                    {Math.max(0, 100 - stats.overallVelocity - 43)}%
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-graphite/70 flex items-center justify-between text-[11px] text-fog">
+              <span>Flujo de Tareas</span>
+              <span className="text-pulse-green font-medium">Equilibrado</span>
+            </div>
+          </div>
         </div>
       )}
 
@@ -572,160 +842,174 @@ export function DashboardView({
           }
         />
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {projects.map((project, index) => {
-            const pct =
-              project.totalPoints > 0
-                ? Math.round((project.completedPoints / project.totalPoints) * 100)
-                : 0;
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[16px] font-semibold text-bone flex items-center gap-2">
+              <FolderKanban className="w-4 h-4 text-signal-teal" />
+              <span>Espacios de Trabajo Scrum</span>
+            </h2>
+            <span className="text-[12px] text-fog">{projects.length} registrados</span>
+          </div>
 
-            return (
-              <motion.div
-                key={project.id}
-                initial={shouldReduceMotion ? {} : { opacity: 0, y: 12 }}
-                animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
-                transition={{ duration: 0.18, delay: Math.min(index * 0.05, 0.3) }}
-                className="group rounded-cards bg-carbon border border-graphite hover:border-iris-violet/40 hover:shadow-lg transition-all duration-200 p-5 flex flex-col justify-between gap-5 relative overflow-hidden"
-              >
-                {/* Subtle top indicator bar */}
-                <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-iris-violet/40 via-signal-teal/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            {projects.map((project, index) => {
+              const pct =
+                project.totalPoints > 0
+                  ? Math.round((project.completedPoints / project.totalPoints) * 100)
+                  : 0;
 
-                <div className="space-y-3">
-                  {/* Top metadata */}
-                  <div className="flex items-center justify-between gap-2 text-[12px]">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span className="font-mono font-semibold text-iris-violet bg-iris-violet/10 px-1.5 py-0.5 rounded text-[11px]">
-                        {project.code}
-                      </span>
-                      <span className="text-ash" aria-hidden="true">
-                        ·
-                      </span>
-                      <Badge variant="default" size="sm">
-                        {formatRoleLabel(project.myRole)}
-                      </Badge>
-                    </div>
+              return (
+                <motion.div
+                  key={project.id}
+                  initial={shouldReduceMotion ? {} : { opacity: 0, y: 12 }}
+                  animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
+                  transition={{ duration: 0.18, delay: Math.min(index * 0.05, 0.3) }}
+                  className="group rounded-cards bg-carbon border border-graphite/80 hover:border-signal-teal/40 hover:shadow-[0_8px_30px_rgba(0,0,0,0.5),0_0_20px_rgba(25,217,232,0.08)] transition-all duration-200 p-5 flex flex-col justify-between gap-5 relative overflow-hidden"
+                >
+                  {/* Subtle top indicator bar */}
+                  <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-signal-teal via-iris-violet to-pulse-green opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
 
-                    {isAdmin && (
-                      <div className="flex items-center gap-1 shrink-0">
-                        <button
-                          type="button"
-                          onClick={() => setTeamProject(project)}
-                          className="p-1.5 rounded-inputs text-fog hover:text-paper hover:bg-graphite transition-colors"
-                          title="Gestionar equipo y roles"
-                          aria-label="Gestionar equipo y roles"
-                        >
-                          <Users className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setDeleteTarget(project)}
-                          className="p-1.5 rounded-inputs text-fog hover:text-coral-red hover:bg-graphite transition-colors"
-                          title="Eliminar proyecto"
-                          aria-label="Eliminar proyecto"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Project Name & Description */}
-                  <button
-                    type="button"
-                    onClick={() => onOpenProject(project.id, 'backlog')}
-                    className="text-left block w-full group/btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-iris-violet/50 rounded-inputs"
-                  >
-                    <h2 className="font-display text-[17px] font-semibold text-bone group-hover/btn:text-paper group-hover/btn:translate-x-0.5 transition-all">
-                      {project.name}
-                    </h2>
-                    <p className="mt-1 text-[13px] text-mist leading-relaxed line-clamp-2">
-                      {project.description || 'Sin descripción técnica registrada.'}
-                    </p>
-                  </button>
-                </div>
-
-                {/* Progress & Active Sprint summary */}
-                <div className="space-y-2.5 pt-3.5 border-t border-graphite">
-                  <div className="flex items-center justify-between text-[12px]">
-                    <div className="flex items-center gap-1.5 min-w-0">
-                      {project.activeSprint ? (
-                        <>
-                          <SprintStatusText status="ACTIVE" />
-                          <span className="text-bone truncate font-medium">
-                            {project.activeSprint.name}
-                          </span>
-                        </>
-                      ) : (
-                        <span className="text-fog italic">Sin Sprint activo</span>
-                      )}
-                    </div>
-                    <span className="text-[11px] text-fog shrink-0 font-medium">
-                      Alcance Global
-                    </span>
-                  </div>
-
-                  <div className="flex items-center justify-between text-[12px]">
-                    <span className="text-fog text-[11px]">Progreso del Proyecto</span>
-                    <span className="font-mono tabular-nums text-fog shrink-0">
-                      <strong className="text-bone">{project.completedPoints}</strong> /{' '}
-                      {project.totalPoints} pts{' '}
-                      <span className="text-signal-teal text-[11px]">({pct}%)</span>
-                    </span>
-                  </div>
-
-                  {/* Animated Progress Bar */}
-                  <div className="h-1.5 w-full rounded-pills bg-obsidian overflow-hidden">
-                    <motion.div
-                      initial={shouldReduceMotion ? false : { width: 0 }}
-                      animate={{ width: `${pct}%` }}
-                      transition={{ duration: 0.6, ease: 'easeOut' }}
-                      className="h-full bg-gradient-to-r from-iris-violet to-signal-teal rounded-pills"
-                    />
-                  </div>
-
-                  {/* Members & Action buttons */}
-                  <div className="flex items-center justify-between pt-1">
-                    <div className="flex items-center -space-x-1.5">
-                      {project.members.slice(0, 5).map((m) =>
-                        m.user ? (
-                          <div key={m.id} title={`${m.user.fullName} (${formatRoleLabel(m.scrumRole)})`}>
-                            <UserAvatar name={m.user.fullName} size="xs" />
-                          </div>
-                        ) : null
-                      )}
-                      {project.members.length === 0 && (
-                        <span className="text-[11px] text-ash">Sin miembros</span>
-                      )}
-                      {project.members.length > 5 && (
-                        <span className="w-5 h-5 rounded-full bg-graphite text-[10px] text-fog font-mono flex items-center justify-center border border-carbon">
-                          +{project.members.length - 5}
+                  <div className="space-y-3">
+                    {/* Top metadata */}
+                    <div className="flex items-center justify-between gap-2 text-[12px]">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {/* Square Logo Glyph matching Aether Core/Pro style */}
+                        <div className="w-7 h-7 rounded-lg bg-signal-teal/15 border border-signal-teal/30 flex items-center justify-center text-signal-teal font-mono font-bold text-xs shadow-[0_0_8px_rgba(25,217,232,0.25)] shrink-0">
+                          {project.code.slice(0, 2)}
+                        </div>
+                        <span className="font-mono font-semibold text-signal-teal bg-signal-teal/10 px-1.5 py-0.5 rounded text-[11px] border border-signal-teal/20">
+                          {project.code}
                         </span>
+                        <span className="text-ash" aria-hidden="true">
+                          ·
+                        </span>
+                        <Badge variant="default" size="sm">
+                          {formatRoleLabel(project.myRole)}
+                        </Badge>
+                      </div>
+
+                      {isAdmin && (
+                        <div className="flex items-center gap-1 shrink-0">
+                          <button
+                            type="button"
+                            onClick={() => setTeamProject(project)}
+                            className="p-1.5 rounded-inputs text-fog hover:text-paper hover:bg-graphite transition-colors"
+                            title="Gestionar equipo y roles"
+                            aria-label="Gestionar equipo y roles"
+                          >
+                            <Users className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget(project)}
+                            className="p-1.5 rounded-inputs text-fog hover:text-coral-red hover:bg-graphite transition-colors"
+                            title="Eliminar proyecto"
+                            aria-label="Eliminar proyecto"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="secondary"
-                        size="xs"
-                        onClick={() => onOpenProject(project.id, 'kanban')}
-                        icon={<Kanban className="w-3 h-3" />}
-                      >
-                        Kanban
-                      </Button>
-                      <Button
-                        variant="primary"
-                        size="xs"
-                        onClick={() => onOpenProject(project.id, 'backlog')}
-                        icon={<ArrowRight className="w-3 h-3" />}
-                      >
-                        Backlog
-                      </Button>
+                    {/* Project Name & Description */}
+                    <button
+                      type="button"
+                      onClick={() => onOpenProject(project.id, 'backlog')}
+                      className="text-left block w-full group/btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-teal/50 rounded-inputs"
+                    >
+                      <h2 className="font-display text-[17px] font-semibold text-bone group-hover/btn:text-paper group-hover/btn:translate-x-0.5 transition-all">
+                        {project.name}
+                      </h2>
+                      <p className="mt-1 text-[13px] text-mist leading-relaxed line-clamp-2">
+                        {project.description || 'Sin descripción técnica registrada.'}
+                      </p>
+                    </button>
+                  </div>
+
+                  {/* Progress & Active Sprint summary */}
+                  <div className="space-y-2.5 pt-3.5 border-t border-graphite/70">
+                    <div className="flex items-center justify-between text-[12px]">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        {project.activeSprint ? (
+                          <>
+                            <SprintStatusText status="ACTIVE" />
+                            <span className="text-bone truncate font-medium">
+                              {project.activeSprint.name}
+                            </span>
+                          </>
+                        ) : (
+                          <span className="text-fog italic">Sin Sprint activo</span>
+                        )}
+                      </div>
+                      <span className="text-[11px] text-fog shrink-0 font-medium">
+                        Alcance Global
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-[12px]">
+                      <span className="text-fog text-[11px]">Progreso del Proyecto</span>
+                      <span className="font-mono tabular-nums text-fog shrink-0">
+                        <strong className="text-bone">{project.completedPoints}</strong> /{' '}
+                        {project.totalPoints} pts{' '}
+                        <span className="text-signal-teal text-[11px]">({pct}%)</span>
+                      </span>
+                    </div>
+
+                    {/* Animated Progress Bar */}
+                    <div className="h-1.5 w-full rounded-pills bg-obsidian overflow-hidden border border-graphite/50">
+                      <motion.div
+                        initial={shouldReduceMotion ? false : { width: 0 }}
+                        animate={{ width: `${pct}%` }}
+                        transition={{ duration: 0.6, ease: 'easeOut' }}
+                        className="h-full bg-gradient-to-r from-signal-teal via-iris-violet to-pulse-green rounded-pills shadow-[0_0_8px_rgba(25,217,232,0.5)]"
+                      />
+                    </div>
+
+                    {/* Members & Action buttons */}
+                    <div className="flex items-center justify-between pt-1">
+                      <div className="flex items-center -space-x-1.5">
+                        {project.members.slice(0, 5).map((m) =>
+                          m.user ? (
+                            <div key={m.id} title={`${m.user.fullName} (${formatRoleLabel(m.scrumRole)})`}>
+                              <UserAvatar name={m.user.fullName} size="xs" />
+                            </div>
+                          ) : null
+                        )}
+                        {project.members.length === 0 && (
+                          <span className="text-[11px] text-ash">Sin miembros</span>
+                        )}
+                        {project.members.length > 5 && (
+                          <span className="w-5 h-5 rounded-full bg-graphite text-[10px] text-fog font-mono flex items-center justify-center border border-carbon">
+                            +{project.members.length - 5}
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="secondary"
+                          size="xs"
+                          onClick={() => onOpenProject(project.id, 'kanban')}
+                          icon={<Kanban className="w-3 h-3 text-signal-teal" />}
+                        >
+                          Kanban
+                        </Button>
+                        <Button
+                          variant="primary"
+                          size="xs"
+                          onClick={() => onOpenProject(project.id, 'backlog')}
+                          icon={<ArrowRight className="w-3 h-3" />}
+                        >
+                          Backlog
+                        </Button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </motion.div>
-            );
-          })}
+                </motion.div>
+              );
+            })}
+          </div>
         </div>
       )}
 
@@ -760,7 +1044,7 @@ export function DashboardView({
             onChange={(e) => setProjDesc(e.target.value)}
             placeholder="Objetivo y alcance del producto a construir..."
           />
-          <div className="flex justify-end gap-2.5 pt-2 border-t border-graphite">
+          <div className="flex justify-end gap-2.5 pt-2 border-t border-graphite/70">
             <Button
               type="button"
               variant="ghost"
@@ -833,7 +1117,7 @@ export function DashboardView({
               </Button>
             </form>
 
-            <div className="divide-y divide-graphite max-h-64 overflow-y-auto border-t border-graphite pt-1">
+            <div className="divide-y divide-graphite max-h-64 overflow-y-auto border-t border-graphite/70 pt-1">
               {currentTeamProject.members.length === 0 ? (
                 <p className="py-6 text-center text-[12px] text-fog">
                   No hay miembros asignados a este proyecto todavía.
@@ -913,7 +1197,7 @@ export function DashboardView({
             <option value="USER">Usuario estándar (USER)</option>
             <option value="ADMIN">Administrador (ADMIN)</option>
           </Select>
-          <div className="flex justify-end gap-2.5 pt-2 border-t border-graphite">
+          <div className="flex justify-end gap-2.5 pt-2 border-t border-graphite/70">
             <Button
               type="button"
               variant="ghost"

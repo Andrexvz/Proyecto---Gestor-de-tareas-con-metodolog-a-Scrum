@@ -33,32 +33,32 @@ export function Badge({
 }: BadgeProps) {
   const variantStyles: Record<BadgeVariant, { container: string; dot: string }> = {
     default: {
-      container: 'bg-graphite text-mist border-smoke',
+      container: 'bg-graphite/70 text-mist border-smoke/60',
       dot: 'bg-fog',
     },
     primary: {
-      container: 'bg-iris-violet/15 text-iris-violet border-iris-violet/30',
-      dot: 'bg-iris-violet',
+      container: 'bg-iris-violet/15 text-iris-violet border-iris-violet/30 shadow-[0_0_8px_rgba(168,85,247,0.15)]',
+      dot: 'bg-iris-violet shadow-[0_0_6px_#A855F7]',
     },
     success: {
-      container: 'bg-pulse-green/15 text-pulse-green border-pulse-green/30',
-      dot: 'bg-pulse-green',
+      container: 'bg-pulse-green/15 text-pulse-green border-pulse-green/30 shadow-[0_0_8px_rgba(48,217,155,0.15)]',
+      dot: 'bg-pulse-green shadow-[0_0_6px_#30D99B]',
     },
     warning: {
-      container: 'bg-acid-lime/15 text-acid-lime border-acid-lime/30',
-      dot: 'bg-acid-lime',
+      container: 'bg-acid-lime/15 text-acid-lime border-acid-lime/30 shadow-[0_0_8px_rgba(251,191,36,0.15)]',
+      dot: 'bg-acid-lime shadow-[0_0_6px_#FBBF24]',
     },
     danger: {
-      container: 'bg-coral-red/15 text-coral-red border-coral-red/30',
-      dot: 'bg-coral-red',
+      container: 'bg-coral-red/15 text-coral-red border-coral-red/30 shadow-[0_0_8px_rgba(244,63,94,0.15)]',
+      dot: 'bg-coral-red shadow-[0_0_6px_#F43F5E]',
     },
     info: {
-      container: 'bg-signal-teal/15 text-signal-teal border-signal-teal/30',
-      dot: 'bg-signal-teal',
+      container: 'bg-signal-teal/15 text-signal-teal border-signal-teal/30 shadow-[0_0_8px_rgba(25,217,232,0.15)]',
+      dot: 'bg-signal-teal shadow-[0_0_6px_#19D9E8]',
     },
     purple: {
-      container: 'bg-lavender/15 text-lavender border-lavender/30',
-      dot: 'bg-lavender',
+      container: 'bg-lavender/15 text-lavender border-lavender/30 shadow-[0_0_8px_rgba(192,132,252,0.15)]',
+      dot: 'bg-lavender shadow-[0_0_6px_#C084FC]',
     },
   };
 

@@ -94,7 +94,7 @@ export function Modal({
             variants={backdropVariants}
             transition={{ duration: 0.15 }}
             onClick={closeOnBackdropClick ? onClose : undefined}
-            className="fixed inset-0 bg-void/80 backdrop-blur-sm"
+            className="fixed inset-0 bg-void/85 backdrop-blur-md"
             aria-hidden="true"
           />
 
@@ -111,7 +111,7 @@ export function Modal({
             variants={modalVariants}
             transition={{ duration: shouldReduceMotion ? 0.01 : 0.18, ease: 'easeOut' }}
             className={cn(
-              'relative w-full rounded-cards bg-obsidian border border-graphite shadow-xl z-10 my-auto overflow-hidden text-mist',
+              'relative w-full rounded-2xl bg-obsidian border border-graphite/80 shadow-[0_20px_50px_rgba(0,0,0,0.8),0_0_30px_rgba(25,217,232,0.08)] z-10 my-auto overflow-hidden text-mist',
               sizeClasses[size],
               className
             )}
@@ -119,7 +119,7 @@ export function Modal({
           >
             {/* Header */}
             {(title || showCloseButton) && (
-              <div className="px-6 py-4 border-b border-graphite flex items-center justify-between gap-4">
+              <div className="px-6 py-4 border-b border-graphite/70 flex items-center justify-between gap-4">
                 <div className="min-w-0 flex-1">
                   {title && (
                     <h2
@@ -153,7 +153,7 @@ export function Modal({
 
             {/* Footer */}
             {footer && (
-              <div className="px-6 py-3.5 border-t border-graphite flex items-center justify-end gap-2.5 bg-carbon/40">
+              <div className="px-6 py-3.5 border-t border-graphite/70 flex items-center justify-end gap-2.5 bg-carbon/40">
                 {footer}
               </div>
             )}
