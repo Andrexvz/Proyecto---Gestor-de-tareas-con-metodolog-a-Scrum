@@ -103,8 +103,7 @@ public class UserStoryService {
         }
 
         if (request.getEpicId() != null) {
-            com.sena.scrum.model.entity.Epic epic = epicRepository.findById(Objects.requireNonNull(request.getEpicId())).orElse(null);
-            story.setEpic(epic);
+            story.setEpic(epicRepository.findById(Objects.requireNonNull(request.getEpicId())).orElse(null));
         }
 
         if (request.getCode() != null && !request.getCode().isBlank()) {
