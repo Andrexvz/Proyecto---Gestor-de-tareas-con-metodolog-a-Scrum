@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -35,10 +36,10 @@ public class ProjectMembershipService {
 
     @Transactional
     public ProjectMembershipResponse upsertMembership(Long projectId, ProjectMembershipRequest request) {
-        Project project = projectRepository.findById(projectId)
+        Project project = projectRepository.findById(Objects.requireNonNull(projectId))
                 .orElseThrow(() -> new ResourceNotFoundException("Proyecto no encontrado con id: " + projectId));
 
-        User user = userRepository.findById(request.getUserId())
+        User user = userRepository.findById(Objects.requireNonNull(request.getUserId()))
                 .orElseThrow(() -> new ResourceNotFoundException("Usuario no encontrado con id: " + request.getUserId()));
 
         Optional<ProjectMembership> existing = membershipRepository.findByProjectIdAndUserId(projectId, user.getId());
@@ -56,7 +57,7 @@ public class ProjectMembershipService {
                     .build();
         }
 
-        return toResponse(membershipRepository.save(membership));
+        return toResponse(membershipRepository.save(Objects.requireNonNull(membership)));
     }
 
     @Transactional
@@ -64,7 +65,7 @@ public class ProjectMembershipService {
         ProjectMembership membership = membershipRepository.findByProjectIdAndUserId(projectId, userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Membresía no encontrada para el proyecto " + projectId + " y usuario " + userId));
 
-        membershipRepository.delete(membership);
+        membershipRepository.delete(Objects.requireNonNull(membership));
     }
 
     public ProjectMembershipResponse toResponse(ProjectMembership m) {

@@ -24,8 +24,9 @@ public class JwtService {
     @Value("${security.jwt.expiration-time:86400000}")
     private long jwtExpiration;
 
+    @SuppressWarnings("null")
     public String extractUsername(String token) {
-        return extractClaim(token, Claims::getSubject);
+        return extractClaim(token, claims -> claims.getSubject());
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {
@@ -37,6 +38,7 @@ public class JwtService {
         return generateToken(new HashMap<>(), userDetails);
     }
 
+    @SuppressWarnings("null")
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
         return Jwts.builder()
                 .setClaims(extraClaims)
@@ -56,10 +58,12 @@ public class JwtService {
         return extractExpiration(token).before(new Date());
     }
 
+    @SuppressWarnings("null")
     private Date extractExpiration(String token) {
-        return extractClaim(token, Claims::getExpiration);
+        return extractClaim(token, claims -> claims.getExpiration());
     }
 
+    @SuppressWarnings("null")
     private Claims extractAllClaims(String token) {
         return Jwts.parserBuilder()
                 .setSigningKey(getSignInKey())

@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,14 +35,14 @@ public class EpicService {
 
     @Transactional(readOnly = true)
     public EpicResponse getEpicById(Long id) {
-        Epic epic = epicRepository.findById(id)
+        Epic epic = epicRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new ResourceNotFoundException("Épica no encontrada con id: " + id));
         return toResponse(epic);
     }
 
     @Transactional
     public EpicResponse createEpic(Long projectId, EpicRequest request) {
-        Project project = projectRepository.findById(projectId)
+        Project project = projectRepository.findById(Objects.requireNonNull(projectId))
                 .orElseThrow(() -> new ResourceNotFoundException("Proyecto no encontrado con id: " + projectId));
 
         String colorHex = request.getColorHex() != null && !request.getColorHex().isBlank()
@@ -56,12 +57,12 @@ public class EpicService {
                 .createdAt(OffsetDateTime.now())
                 .build();
 
-        return toResponse(epicRepository.save(epic));
+        return toResponse(epicRepository.save(Objects.requireNonNull(epic)));
     }
 
     @Transactional
     public EpicResponse updateEpic(Long id, EpicRequest request) {
-        Epic epic = epicRepository.findById(id)
+        Epic epic = epicRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new ResourceNotFoundException("Épica no encontrada con id: " + id));
 
         if (request.getName() != null && !request.getName().isBlank()) {
@@ -74,22 +75,22 @@ public class EpicService {
             epic.setColorHex(request.getColorHex().trim());
         }
 
-        return toResponse(epicRepository.save(epic));
+        return toResponse(epicRepository.save(Objects.requireNonNull(epic)));
     }
 
     @Transactional
     public void deleteEpic(Long id) {
-        Epic epic = epicRepository.findById(id)
+        Epic epic = epicRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new ResourceNotFoundException("Épica no encontrada con id: " + id));
 
         // Desvincular historias sin borrarlas (RF3)
         List<UserStory> linkedStories = userStoryRepository.findByEpicId(id);
         for (UserStory story : linkedStories) {
             story.setEpic(null);
-            userStoryRepository.save(story);
+            userStoryRepository.save(Objects.requireNonNull(story));
         }
 
-        epicRepository.delete(epic);
+        epicRepository.delete(Objects.requireNonNull(epic));
     }
 
     public EpicResponse toResponse(Epic epic) {

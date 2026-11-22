@@ -20,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -40,7 +41,7 @@ public class ImpedimentService {
 
     @Transactional
     public ImpedimentResponse createImpediment(Long taskId, ImpedimentRequest request, User currentUser) {
-        Task task = taskRepository.findById(taskId)
+        Task task = taskRepository.findById(Objects.requireNonNull(taskId))
                 .orElseThrow(() -> new ResourceNotFoundException("Tarea no encontrada con id: " + taskId));
 
         Long projectId = task.getUserStory().getProject().getId();
@@ -55,7 +56,7 @@ public class ImpedimentService {
                 .createdAt(OffsetDateTime.now())
                 .build();
 
-        Impediment saved = impedimentRepository.save(impediment);
+        Impediment saved = impedimentRepository.save(Objects.requireNonNull(impediment));
 
         auditLogService.logEvent(
                 currentUser,
@@ -70,7 +71,7 @@ public class ImpedimentService {
 
     @Transactional
     public ImpedimentResponse resolveImpediment(Long impedimentId, ImpedimentResolveRequest request, User currentUser) {
-        Impediment impediment = impedimentRepository.findById(impedimentId)
+        Impediment impediment = impedimentRepository.findById(Objects.requireNonNull(impedimentId))
                 .orElseThrow(() -> new ResourceNotFoundException("Impedimento no encontrado con id: " + impedimentId));
 
         Long projectId = impediment.getTask().getUserStory().getProject().getId();
@@ -82,7 +83,7 @@ public class ImpedimentService {
         impediment.setResolvedAt(OffsetDateTime.now());
         impediment.setResolutionComment(request.getResolutionComment().trim());
 
-        Impediment updated = impedimentRepository.save(impediment);
+        Impediment updated = impedimentRepository.save(Objects.requireNonNull(impediment));
 
         auditLogService.logEvent(
                 currentUser,

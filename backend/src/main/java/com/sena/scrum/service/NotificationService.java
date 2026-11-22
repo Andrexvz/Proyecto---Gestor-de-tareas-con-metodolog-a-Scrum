@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -28,10 +29,10 @@ public class NotificationService {
     @Transactional
     public void markAsRead(Long userId, Long notificationId) {
         if (notificationId != null) {
-            notificationRepository.findById(notificationId).ifPresent(n -> {
+            notificationRepository.findById(Objects.requireNonNull(notificationId)).ifPresent(n -> {
                 if (n.getUser() != null && n.getUser().getId().equals(userId)) {
                     n.setReadStatus(true);
-                    notificationRepository.save(n);
+                    notificationRepository.save(Objects.requireNonNull(n));
                 }
             });
         } else {
@@ -40,7 +41,7 @@ public class NotificationService {
             for (AppNotification n : list) {
                 n.setReadStatus(true);
             }
-            notificationRepository.saveAll(list);
+            notificationRepository.saveAll(Objects.requireNonNull(list));
         }
     }
 
@@ -52,7 +53,7 @@ public class NotificationService {
                 .readStatus(false)
                 .createdAt(OffsetDateTime.now())
                 .build();
-        return notificationRepository.save(notification);
+        return notificationRepository.save(Objects.requireNonNull(notification));
     }
 
     public NotificationResponse toResponse(AppNotification n) {

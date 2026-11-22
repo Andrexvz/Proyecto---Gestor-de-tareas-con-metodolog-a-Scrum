@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -45,7 +46,7 @@ public class ProjectService {
                 .description(request.getDescription())
                 .build();
 
-        return mapToResponse(projectRepository.save(project));
+        return mapToResponse(projectRepository.save(Objects.requireNonNull(project)));
     }
 
     @Transactional
@@ -61,17 +62,17 @@ public class ProjectService {
         project.setName(request.getName().trim());
         project.setDescription(request.getDescription());
 
-        return mapToResponse(projectRepository.save(project));
+        return mapToResponse(projectRepository.save(Objects.requireNonNull(project)));
     }
 
     @Transactional
     public void deleteProject(Long id) {
         Project project = findEntityById(id);
-        projectRepository.delete(project);
+        projectRepository.delete(Objects.requireNonNull(project));
     }
 
     public Project findEntityById(Long id) {
-        return projectRepository.findById(id)
+        return projectRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new ResourceNotFoundException("Proyecto no encontrado con ID: " + id));
     }
 

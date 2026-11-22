@@ -18,6 +18,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,7 +32,7 @@ public class TaskCommentService {
 
     @Transactional(readOnly = true)
     public List<TaskCommentResponse> getCommentsByTask(Long taskId, User currentUser) {
-        Task task = taskRepository.findById(taskId)
+        Task task = taskRepository.findById(Objects.requireNonNull(taskId))
                 .orElseThrow(() -> new ResourceNotFoundException("Tarea no encontrada con id: " + taskId));
 
         Long projectId = task.getUserStory().getProject().getId();
@@ -44,7 +45,7 @@ public class TaskCommentService {
 
     @Transactional
     public TaskCommentResponse createComment(Long taskId, TaskCommentRequest request, User currentUser) {
-        Task task = taskRepository.findById(taskId)
+        Task task = taskRepository.findById(Objects.requireNonNull(taskId))
                 .orElseThrow(() -> new ResourceNotFoundException("Tarea no encontrada con id: " + taskId));
 
         Long projectId = task.getUserStory().getProject().getId();
@@ -59,7 +60,7 @@ public class TaskCommentService {
                 .createdAt(OffsetDateTime.now())
                 .build();
 
-        TaskComment saved = commentRepository.save(comment);
+        TaskComment saved = commentRepository.save(Objects.requireNonNull(comment));
 
         auditLogService.logEvent(
                 currentUser,

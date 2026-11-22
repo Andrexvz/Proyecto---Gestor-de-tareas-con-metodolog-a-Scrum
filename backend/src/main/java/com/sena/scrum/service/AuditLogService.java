@@ -15,6 +15,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -54,7 +55,7 @@ public class AuditLogService {
                 .timestamp(OffsetDateTime.now())
                 .build();
 
-        return auditLogRepository.save(log);
+        return auditLogRepository.save(Objects.requireNonNull(log));
     }
 
     private void validateCanViewAuditLogs(User user) {

@@ -20,6 +20,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.security.SecureRandom;
 import java.time.OffsetDateTime;
 import java.util.Map;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -67,7 +68,7 @@ public class AuthService {
                 .title(request.getTitle())
                 .build();
 
-        User savedUser = userRepository.save(user);
+        User savedUser = userRepository.save(Objects.requireNonNull(user));
         String token = jwtService.generateToken(savedUser);
 
         return AuthResponse.builder()
@@ -102,7 +103,7 @@ public class AuthService {
                 .createdAt(OffsetDateTime.now())
                 .build();
 
-        resetTokenRepository.save(token);
+        resetTokenRepository.save(Objects.requireNonNull(token));
 
         return Map.of(
                 "message", "Si el correo está registrado, se enviaron las instrucciones de restablecimiento",
@@ -125,10 +126,10 @@ public class AuthService {
 
         User user = resetToken.getUser();
         user.setPasswordHash(passwordEncoder.encode(request.getNewPassword()));
-        userRepository.save(user);
+        userRepository.save(Objects.requireNonNull(user));
 
         resetToken.setUsed(true);
-        resetTokenRepository.save(resetToken);
+        resetTokenRepository.save(Objects.requireNonNull(resetToken));
 
         return Map.of("message", "Contraseña actualizada exitosamente. Ya puedes iniciar sesión con tu nueva clave");
     }

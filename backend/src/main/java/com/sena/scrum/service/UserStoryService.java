@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -65,7 +66,7 @@ public class UserStoryService {
         }
         com.sena.scrum.model.entity.Epic epic = null;
         if (request.getEpicId() != null) {
-            epic = epicRepository.findById(request.getEpicId()).orElse(null);
+            epic = epicRepository.findById(Objects.requireNonNull(request.getEpicId())).orElse(null);
         }
 
         String code = request.getCode();
@@ -87,7 +88,7 @@ public class UserStoryService {
                 .isCompleted(request.getIsCompleted() != null ? request.getIsCompleted() : false)
                 .build();
 
-        return mapToResponse(userStoryRepository.save(story));
+        return mapToResponse(userStoryRepository.save(Objects.requireNonNull(story)));
     }
 
     @Transactional
@@ -102,7 +103,7 @@ public class UserStoryService {
         }
 
         if (request.getEpicId() != null) {
-            com.sena.scrum.model.entity.Epic epic = epicRepository.findById(request.getEpicId()).orElse(null);
+            com.sena.scrum.model.entity.Epic epic = epicRepository.findById(Objects.requireNonNull(request.getEpicId())).orElse(null);
             story.setEpic(epic);
         }
 
@@ -122,7 +123,7 @@ public class UserStoryService {
             story.setIsCompleted(request.getIsCompleted());
         }
 
-        return mapToResponse(userStoryRepository.save(story));
+        return mapToResponse(userStoryRepository.save(Objects.requireNonNull(story)));
     }
 
     @Transactional
@@ -134,17 +135,17 @@ public class UserStoryService {
         } else {
             story.setSprint(null); // Regresa al Product Backlog
         }
-        return mapToResponse(userStoryRepository.save(story));
+        return mapToResponse(userStoryRepository.save(Objects.requireNonNull(story)));
     }
 
     @Transactional
     public void deleteStory(Long id) {
         UserStory story = findEntityById(id);
-        userStoryRepository.delete(story);
+        userStoryRepository.delete(Objects.requireNonNull(story));
     }
 
     public UserStory findEntityById(Long id) {
-        return userStoryRepository.findById(id)
+        return userStoryRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new ResourceNotFoundException("Historia de usuario no encontrada con ID: " + id));
     }
 

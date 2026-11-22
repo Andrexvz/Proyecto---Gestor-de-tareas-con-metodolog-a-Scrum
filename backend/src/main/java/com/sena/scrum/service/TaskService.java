@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -79,7 +80,7 @@ public class TaskService {
         UserStory story = userStoryService.findEntityById(request.getUserStoryId());
         User assignedTo = null;
         if (request.getAssignedToId() != null) {
-            assignedTo = userRepository.findById(request.getAssignedToId())
+            assignedTo = userRepository.findById(Objects.requireNonNull(request.getAssignedToId()))
                     .orElseThrow(() -> new ResourceNotFoundException("Usuario asignado no encontrado con ID: " + request.getAssignedToId()));
         }
 
@@ -97,7 +98,7 @@ public class TaskService {
                 .status(request.getStatus() != null ? request.getStatus() : TaskStatus.TODO)
                 .build();
 
-        Task saved = taskRepository.save(task);
+        Task saved = taskRepository.save(Objects.requireNonNull(task));
         syncStoryCompletion(story.getId());
         return mapToResponse(saved);
     }
@@ -116,7 +117,7 @@ public class TaskService {
         }
 
         if (request.getAssignedToId() != null) {
-            User assignedTo = userRepository.findById(request.getAssignedToId())
+            User assignedTo = userRepository.findById(Objects.requireNonNull(request.getAssignedToId()))
                     .orElseThrow(() -> new ResourceNotFoundException("Usuario asignado no encontrado con ID: " + request.getAssignedToId()));
             task.setAssignedTo(assignedTo);
         } else {
@@ -133,7 +134,7 @@ public class TaskService {
             task.setStatus(request.getStatus());
         }
 
-        Task updated = taskRepository.save(task);
+        Task updated = taskRepository.save(Objects.requireNonNull(task));
         syncStoryCompletion(task.getUserStory().getId());
         return mapToResponse(updated);
     }
@@ -147,7 +148,7 @@ public class TaskService {
         }
 
         task.setStatus(status);
-        Task updated = taskRepository.save(task);
+        Task updated = taskRepository.save(Objects.requireNonNull(task));
 
         // Sincronización automática de progreso con la Historia de Usuario
         syncStoryCompletion(task.getUserStory().getId());
@@ -167,17 +168,17 @@ public class TaskService {
     public void deleteTask(Long id) {
         Task task = findEntityById(id);
         Long storyId = task.getUserStory().getId();
-        taskRepository.delete(task);
+        taskRepository.delete(Objects.requireNonNull(task));
         syncStoryCompletion(storyId);
     }
 
     public Task findEntityById(Long id) {
-        return taskRepository.findById(id)
+        return taskRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new ResourceNotFoundException("Tarea no encontrada con ID: " + id));
     }
 
     private void syncStoryCompletion(Long storyId) {
-        UserStory story = userStoryRepository.findById(storyId).orElse(null);
+        UserStory story = userStoryRepository.findById(Objects.requireNonNull(storyId)).orElse(null);
         if (story == null) return;
 
         List<Task> tasks = taskRepository.findByUserStoryId(storyId);
@@ -188,7 +189,7 @@ public class TaskService {
         boolean allDone = tasks.stream().allMatch(t -> t.getStatus() == TaskStatus.DONE);
         if (!story.getIsCompleted().equals(allDone)) {
             story.setIsCompleted(allDone);
-            userStoryRepository.save(story);
+            userStoryRepository.save(Objects.requireNonNull(story));
         }
     }
 

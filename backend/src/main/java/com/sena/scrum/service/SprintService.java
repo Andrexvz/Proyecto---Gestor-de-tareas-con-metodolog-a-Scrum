@@ -23,6 +23,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -71,7 +72,7 @@ public class SprintService {
                 .status(request.getStatus() != null ? request.getStatus() : SprintStatus.PLANNED)
                 .build();
 
-        return mapToResponse(sprintRepository.save(sprint));
+        return mapToResponse(sprintRepository.save(Objects.requireNonNull(sprint)));
     }
 
     @Transactional
@@ -96,7 +97,7 @@ public class SprintService {
             applyStatusTransition(sprint, request.getStatus());
         }
 
-        return mapToResponse(sprintRepository.save(sprint));
+        return mapToResponse(sprintRepository.save(Objects.requireNonNull(sprint)));
     }
 
     @Transactional
@@ -106,7 +107,7 @@ public class SprintService {
             return mapToResponse(sprint);
         }
         applyStatusTransition(sprint, SprintStatus.ACTIVE);
-        return mapToResponse(sprintRepository.save(sprint));
+        return mapToResponse(sprintRepository.save(Objects.requireNonNull(sprint)));
     }
 
     @Transactional
@@ -139,7 +140,7 @@ public class SprintService {
 
         Sprint targetSprint = null;
         if ("NEXT_SPRINT".equalsIgnoreCase(request.getDestination()) && request.getTargetSprintId() != null) {
-            targetSprint = findEntityById(request.getTargetSprintId());
+            targetSprint = findEntityById(Objects.requireNonNull(request.getTargetSprintId()));
             if (targetSprint.getStatus() == SprintStatus.COMPLETED) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "El Sprint de destino no puede estar cerrado");
             }
@@ -148,7 +149,7 @@ public class SprintService {
         // Transferir historias incompletas
         for (UserStory story : incompleteStories) {
             story.setSprint(targetSprint); // Si es null, regresa a Backlog
-            userStoryRepository.save(story);
+            userStoryRepository.save(Objects.requireNonNull(story));
         }
 
         sprint.setStatus(SprintStatus.COMPLETED);
@@ -156,7 +157,7 @@ public class SprintService {
         sprint.setVelocity(deliveredPoints);
         sprint.setDeliveredPoints(deliveredPoints);
         sprint.setPlannedPoints(plannedPoints);
-        sprintRepository.save(sprint);
+        sprintRepository.save(Objects.requireNonNull(sprint));
 
         String destinationName = targetSprint != null ? targetSprint.getName() : "Product Backlog";
 
@@ -197,7 +198,7 @@ public class SprintService {
     public SprintResponse updateSprintStatus(Long id, SprintStatus newStatus) {
         Sprint sprint = findEntityById(id);
         applyStatusTransition(sprint, newStatus);
-        return mapToResponse(sprintRepository.save(sprint));
+        return mapToResponse(sprintRepository.save(Objects.requireNonNull(sprint)));
     }
 
     private void applyStatusTransition(Sprint sprint, SprintStatus newStatus) {
@@ -223,7 +224,7 @@ public class SprintService {
             for (UserStory story : sprintStories) {
                 if (!Boolean.TRUE.equals(story.getIsCompleted())) {
                     story.setSprint(null);
-                    userStoryRepository.save(story);
+                    userStoryRepository.save(Objects.requireNonNull(story));
                 }
             }
         } else {
@@ -239,13 +240,13 @@ public class SprintService {
         List<UserStory> stories = userStoryRepository.findBySprintId(id);
         for (UserStory story : stories) {
             story.setSprint(null);
-            userStoryRepository.save(story);
+            userStoryRepository.save(Objects.requireNonNull(story));
         }
-        sprintRepository.delete(sprint);
+        sprintRepository.delete(Objects.requireNonNull(sprint));
     }
 
     public Sprint findEntityById(Long id) {
-        return sprintRepository.findById(id)
+        return sprintRepository.findById(Objects.requireNonNull(id))
                 .orElseThrow(() -> new ResourceNotFoundException("Sprint no encontrado con ID: " + id));
     }
 
