@@ -515,7 +515,7 @@ export function AppShell({
       {/* Desktop Sidebar with 256px expanded / 72px collapsed */}
       <aside
         className={`hidden md:block shrink-0 transition-[width] duration-200 ease-in-out ${
-          collapsed ? 'w-[72px]' : 'w-64'
+          collapsed ? 'w-[72px] min-w-[72px] max-w-[72px]' : 'w-[256px] min-w-[256px] max-w-[256px]'
         }`}
       >
         <div className="sticky top-0 h-screen">{renderSidebarContent(false)}</div>
@@ -539,7 +539,7 @@ export function AppShell({
               animate={shouldReduceMotion ? { opacity: 1 } : { x: 0 }}
               exit={shouldReduceMotion ? { opacity: 0 } : { x: '-100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 280 }}
-              className="relative w-64 max-w-[80vw] h-full z-10 shadow-2xl"
+              className="relative w-[280px] max-w-[85vw] h-full z-10 shadow-2xl"
             >
               {renderSidebarContent(true)}
             </motion.div>

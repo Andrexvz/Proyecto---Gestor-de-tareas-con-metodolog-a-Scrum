@@ -887,10 +887,10 @@ export function DashboardView({
 
             {/* Circular Donut Centered */}
             <div className="flex flex-col items-center justify-center py-2">
-              <div className="relative w-36 h-36 shrink-0 my-1">
+              <div className="relative w-[160px] h-[160px] shrink-0 my-1">
                 <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
                   {/* Background Track */}
-                  <circle cx="50" cy="50" r="38" fill="none" stroke="#1C293D" strokeWidth="11" />
+                  <circle cx="50" cy="50" r="38" fill="none" stroke="#1C293D" strokeWidth="10" />
 
                   {/* Segment 1: Hecho (Emerald #30D99B) */}
                   <circle
@@ -899,7 +899,7 @@ export function DashboardView({
                     r="38"
                     fill="none"
                     stroke="#30D99B"
-                    strokeWidth="11"
+                    strokeWidth="10"
                     strokeDasharray={`${donutData.doneLen} ${donutData.C}`}
                     strokeDashoffset="0"
                     style={{ filter: 'drop-shadow(0 0 4px rgba(48,217,155,0.4))' }}
@@ -912,7 +912,7 @@ export function DashboardView({
                     r="38"
                     fill="none"
                     stroke="#A855F7"
-                    strokeWidth="11"
+                    strokeWidth="10"
                     strokeDasharray={`${donutData.inProgressLen} ${donutData.C}`}
                     strokeDashoffset={-donutData.doneLen}
                     style={{ filter: 'drop-shadow(0 0 4px rgba(168,85,247,0.4))' }}
@@ -925,7 +925,7 @@ export function DashboardView({
                     r="38"
                     fill="none"
                     stroke="#19D9E8"
-                    strokeWidth="11"
+                    strokeWidth="10"
                     strokeDasharray={`${donutData.testingLen} ${donutData.C}`}
                     strokeDashoffset={-(donutData.doneLen + donutData.inProgressLen)}
                     style={{ filter: 'drop-shadow(0 0 4px rgba(25,217,232,0.4))' }}
@@ -938,7 +938,7 @@ export function DashboardView({
                     r="38"
                     fill="none"
                     stroke="#64748B"
-                    strokeWidth="11"
+                    strokeWidth="10"
                     strokeDasharray={`${donutData.todoLen} ${donutData.C}`}
                     strokeDashoffset={-(donutData.doneLen + donutData.inProgressLen + donutData.testingLen)}
                   />
