@@ -2,6 +2,7 @@ package com.sena.scrum.service;
 
 import com.sena.scrum.model.dto.AuditLogResponse;
 import com.sena.scrum.model.entity.AuditLog;
+import com.sena.scrum.model.entity.ProjectMembership;
 import com.sena.scrum.model.entity.User;
 import com.sena.scrum.model.enums.ScrumRole;
 import com.sena.scrum.repository.AuditLogRepository;

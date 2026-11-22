@@ -35,7 +35,6 @@ public class SecurityConfig {
     private final UserDetailsService userDetailsService;
 
     @Bean
-    @SuppressWarnings("null")
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(csrf -> csrf.disable())
