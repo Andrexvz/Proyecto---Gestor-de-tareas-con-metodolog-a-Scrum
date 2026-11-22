@@ -18,6 +18,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -61,8 +62,8 @@ public class AuditLogService {
 
     private void validateCanViewAuditLogs(User user) {
         if ("ADMIN".equals(user.getGlobalRole())) return;
-        boolean isSmInAnyProject = membershipRepository.findByUserId(user.getId()).stream()
-                .anyMatch(m -> m.getScrumRole() == ScrumRole.SCRUM_MASTER);
+        List<ProjectMembership> memberships = membershipRepository.findByUserId(user.getId());
+        boolean isSmInAnyProject = memberships.stream().anyMatch(m -> m.getScrumRole() == ScrumRole.SCRUM_MASTER);
         if (!isSmInAnyProject) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "Acceso restringido a Administradores y Scrum Masters (RNF-06)");
