@@ -6,13 +6,10 @@ import com.sena.scrum.model.entity.User;
 import com.sena.scrum.model.enums.Role;
 import com.sena.scrum.model.enums.SprintStatus;
 import com.sena.scrum.model.enums.StoryPriority;
-import com.sena.scrum.security.JwtService;
 import com.sena.scrum.service.AiStoryService;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
-
-import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 

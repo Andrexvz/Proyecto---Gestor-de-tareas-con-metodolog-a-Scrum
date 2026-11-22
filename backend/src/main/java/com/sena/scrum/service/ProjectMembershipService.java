@@ -62,10 +62,10 @@ public class ProjectMembershipService {
 
     @Transactional
     public void deleteMembership(Long projectId, Long userId) {
-        membershipRepository.delete(
-                membershipRepository.findByProjectIdAndUserId(projectId, userId)
-                        .orElseThrow(() -> new ResourceNotFoundException("Membresía no encontrada para el proyecto " + projectId + " y usuario " + userId))
-        );
+        ProjectMembership membership = membershipRepository.findByProjectIdAndUserId(projectId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Membresía no encontrada para el proyecto " + projectId + " y usuario " + userId));
+
+        membershipRepository.delete(Objects.requireNonNull(membership));
     }
 
     public ProjectMembershipResponse toResponse(ProjectMembership m) {
