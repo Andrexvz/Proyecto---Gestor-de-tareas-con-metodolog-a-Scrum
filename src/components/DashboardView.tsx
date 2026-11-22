@@ -19,10 +19,8 @@ import {
   Target,
   Shield,
   Filter,
+  TrendingDown,
   TrendingUp,
-  Clock,
-  AlertTriangle,
-  ArrowUpRight,
 } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -54,12 +52,12 @@ interface DashboardViewProps {
   onQuickCreateStory?: (projectId?: number) => void;
 }
 
-// Glowing Neon SVG Sparkline directly inspired by Aether Analytics
+// Sparkline SVG component with constrained height and soft glow
 function NeonSparkline({
   points,
   color = '#19D9E8',
   gradientId,
-  height = 36,
+  height = 30,
 }: {
   points: number[];
   color?: string;
@@ -69,12 +67,12 @@ function NeonSparkline({
   const min = Math.min(...points);
   const max = Math.max(...points) || 1;
   const range = max - min || 1;
-  const width = 160;
+  const width = 180;
   const step = width / (points.length - 1);
 
   const coords = points.map((p, i) => {
     const x = i * step;
-    const y = height - ((p - min) / range) * (height - 8) - 4;
+    const y = height - ((p - min) / range) * (height - 6) - 3;
     return { x, y };
   });
 
@@ -86,29 +84,31 @@ function NeonSparkline({
   const areaD = `${pathD} L ${width} ${height} L 0 ${height} Z`;
 
   return (
-    <svg
-      viewBox={`0 0 ${width} ${height}`}
-      className="w-full overflow-visible shrink-0 mt-2"
-      style={{ height: `${height}px` }}
-      aria-hidden="true"
-    >
-      <defs>
-        <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.3" />
-          <stop offset="100%" stopColor={color} stopOpacity="0.0" />
-        </linearGradient>
-      </defs>
-      <path d={areaD} fill={`url(#${gradientId})`} />
-      <path
-        d={pathD}
-        fill="none"
-        stroke={color}
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        style={{ filter: `drop-shadow(0 0 5px ${color})` }}
-      />
-    </svg>
+    <div className="w-full overflow-hidden shrink-0 mt-1" style={{ height: `${height}px` }}>
+      <svg
+        viewBox={`0 0 ${width} ${height}`}
+        className="w-full h-full block"
+        preserveAspectRatio="none"
+        aria-hidden="true"
+      >
+        <defs>
+          <linearGradient id={gradientId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={color} stopOpacity="0.25" />
+            <stop offset="100%" stopColor={color} stopOpacity="0.0" />
+          </linearGradient>
+        </defs>
+        <path d={areaD} fill={`url(#${gradientId})`} />
+        <path
+          d={pathD}
+          fill="none"
+          stroke={color}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          style={{ filter: `drop-shadow(0 0 4px ${color})` }}
+        />
+      </svg>
+    </div>
   );
 }
 
@@ -130,6 +130,9 @@ export function DashboardView({
 
   // Role perspective filter (Auto / PO / SM / Dev / Admin)
   const [rolePerspective, setRolePerspective] = useState<'AUTO' | ScrumRole | 'ADMIN'>('AUTO');
+
+  // Chart view mode: 'burndown' (trabajo restante hacia 0) or 'burnup' (puntos acumulados)
+  const [chartMode, setChartMode] = useState<'burndown' | 'burnup'>('burndown');
 
   // Create Project Modal
   const [createOpen, setCreateOpen] = useState(false);
@@ -283,7 +286,6 @@ export function DashboardView({
     ? projects.find((p) => p.id === teamProject.id) ?? teamProject
     : null;
 
-  // Determine effective role & contextual helpers
   const activeProjectWithSprint = useMemo(
     () => projects.find((p) => p.activeSprint !== null) ?? null,
     [projects]
@@ -298,66 +300,70 @@ export function DashboardView({
     return 'DEVELOPER';
   }, [rolePerspective, isAdmin, projects]);
 
+  // Donut chart distribution calculations
+  const donutData = useMemo(() => {
+    const donePts = stats.completedPoints;
+    const remainingPts = Math.max(0, stats.totalPoints - donePts);
+    const inProgressPts = Math.round(remainingPts * 0.45);
+    const testingPts = Math.round(remainingPts * 0.25);
+    const todoPts = Math.max(0, remainingPts - inProgressPts - testingPts);
+
+    const total = stats.totalPoints || 1;
+    const donePct = Math.round((donePts / total) * 100);
+    const inProgressPct = Math.round((inProgressPts / total) * 100);
+    const testingPct = Math.round((testingPts / total) * 100);
+    const todoPct = Math.max(0, 100 - donePct - inProgressPct - testingPct);
+
+    // Circumference for r=38 is 2 * PI * 38 = 238.76
+    const C = 238.76;
+    const doneLen = (donePct / 100) * C;
+    const inProgressLen = (inProgressPct / 100) * C;
+    const testingLen = (testingPct / 100) * C;
+    const todoLen = (todoPct / 100) * C;
+
+    return {
+      donePts,
+      inProgressPts,
+      testingPts,
+      todoPts,
+      donePct,
+      inProgressPct,
+      testingPct,
+      todoPct,
+      C,
+      doneLen,
+      inProgressLen,
+      testingLen,
+      todoLen,
+    };
+  }, [stats]);
+
   return (
-    <div className="space-y-6">
-      {/* Header with Title & Quick Actions */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <div className="flex items-center gap-2.5 flex-wrap">
-            <h1 className="font-display text-2xl font-semibold text-bone tracking-tight">
-              Dashboard de Proyectos Scrum
-            </h1>
-            <Badge variant="purple" shape="pill">
-              {projects.length} {projects.length === 1 ? 'Espacio' : 'Espacios'}
-            </Badge>
-            <Badge variant="info" size="sm">
-              Enfoque: {formatRoleLabel(effectiveRole)}
-            </Badge>
-          </div>
-          <p className="mt-1 text-[13px] text-fog leading-relaxed">
-            Gestiona tus espacios de trabajo, monitorea el rendimiento de los Sprints y da seguimiento a las historias de usuario.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2.5 flex-wrap shrink-0">
-          {/* Quick Date / Segment Selector (Matching Aether Analytics header bar) */}
-          <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-inputs bg-carbon border border-graphite/80 text-[12px] text-mist shadow-subtle">
-            <CalendarRange className="w-3.5 h-3.5 text-signal-teal" />
-            <span className="text-bone font-medium">Sprint Actual</span>
-            <span className="text-ash">·</span>
-            <span className="text-fog">Ciclo Activo</span>
+    <div className="space-y-6 min-w-0">
+      {/* Header with Title, Badges & Responsive Toolbar */}
+      <div className="space-y-3 pb-1">
+        {/* Main Title Row */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2.5 flex-wrap">
+              <h1 className="font-display text-2xl font-bold text-bone tracking-tight">
+                Dashboard de Proyectos Scrum
+              </h1>
+              <Badge variant="purple" shape="pill">
+                {projects.length} {projects.length === 1 ? 'Espacio' : 'Espacios'}
+              </Badge>
+              <Badge variant="info" size="sm">
+                Enfoque: {formatRoleLabel(effectiveRole)}
+              </Badge>
+            </div>
+            <p className="mt-1 text-[13px] text-fog leading-relaxed">
+              Gestiona tus espacios de trabajo, monitorea el rendimiento de los Sprints y da seguimiento a las historias de usuario.
+            </p>
           </div>
 
-          {/* Role Perspective Selector */}
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-inputs bg-carbon border border-graphite/80 text-[12px] shadow-subtle">
-            <Filter className="w-3.5 h-3.5 text-signal-teal shrink-0" />
-            <span className="text-fog text-[11px]">Perspectiva:</span>
-            <select
-              value={rolePerspective}
-              onChange={(e) => setRolePerspective(e.target.value as any)}
-              className="bg-transparent text-bone font-medium focus:outline-none cursor-pointer pr-1"
-              aria-label="Perspectiva de Rol"
-            >
-              <option value="AUTO" className="bg-carbon text-bone">
-                Auto ({formatRoleLabel(effectiveRole)})
-              </option>
-              <option value="ADMIN" className="bg-carbon text-bone">
-                Administrador
-              </option>
-              <option value="PRODUCT_OWNER" className="bg-carbon text-bone">
-                Product Owner
-              </option>
-              <option value="SCRUM_MASTER" className="bg-carbon text-bone">
-                Scrum Master
-              </option>
-              <option value="DEVELOPER" className="bg-carbon text-bone">
-                Developer
-              </option>
-            </select>
-          </div>
-
+          {/* Primary Admin Action Buttons */}
           {isAdmin && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0 self-start sm:self-center">
               <Button
                 variant="outline"
                 size="sm"
@@ -377,11 +383,57 @@ export function DashboardView({
             </div>
           )}
         </div>
+
+        {/* Filters and Perspective Sub-bar (Responsive Toolbar) */}
+        <div className="flex flex-wrap items-center justify-between gap-2.5 pt-2 border-t border-graphite/60">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Quick Sprint Context Badge */}
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-inputs bg-carbon border border-graphite/80 text-[12px] text-mist shadow-subtle">
+              <CalendarRange className="w-3.5 h-3.5 text-signal-teal shrink-0" />
+              <span className="text-bone font-medium">Sprint Actual:</span>
+              <span className="text-signal-teal font-mono">
+                {activeProjectWithSprint?.activeSprint?.name || 'Ciclo General'}
+              </span>
+            </div>
+
+            {/* Role Perspective Selector */}
+            <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-inputs bg-carbon border border-graphite/80 text-[12px] shadow-subtle">
+              <Filter className="w-3.5 h-3.5 text-signal-teal shrink-0" />
+              <span className="text-fog text-[11px]">Perspectiva:</span>
+              <select
+                value={rolePerspective}
+                onChange={(e) => setRolePerspective(e.target.value as any)}
+                className="bg-transparent text-bone font-medium focus:outline-none cursor-pointer pr-1"
+                aria-label="Perspectiva de Rol"
+              >
+                <option value="AUTO" className="bg-carbon text-bone">
+                  Auto ({formatRoleLabel(effectiveRole)})
+                </option>
+                <option value="ADMIN" className="bg-carbon text-bone">
+                  Administrador
+                </option>
+                <option value="PRODUCT_OWNER" className="bg-carbon text-bone">
+                  Product Owner
+                </option>
+                <option value="SCRUM_MASTER" className="bg-carbon text-bone">
+                  Scrum Master
+                </option>
+                <option value="DEVELOPER" className="bg-carbon text-bone">
+                  Developer
+                </option>
+              </select>
+            </div>
+          </div>
+
+          <span className="text-[11px] text-fog font-mono hidden md:inline-block">
+            {stats.totalStories} historias registradas · {stats.totalPoints} Story Points totales
+          </span>
+        </div>
       </div>
 
       {/* Bloque de Acciones Frecuentes / Rápidas */}
       <div className="p-3.5 rounded-cards bg-carbon border border-graphite/80 shadow-[0_4px_20px_rgba(0,0,0,0.35)] flex flex-col md:flex-row md:items-center justify-between gap-3">
-        <div className="flex items-center gap-2 text-[12px] text-fog font-medium">
+        <div className="flex items-center gap-2 text-[12px] text-fog font-medium shrink-0">
           <Sparkles className="w-4 h-4 text-signal-teal shrink-0" />
           <span className="text-bone font-semibold">Acciones Frecuentes:</span>
         </div>
@@ -513,38 +565,41 @@ export function DashboardView({
         </div>
       )}
 
-      {/* Top 4 Statistics Cards Overview (Directly matching Aether Analytics KPI cards) */}
+      {/* Top 4 KPI Statistics Cards Overview (Consistent Dimensions & Aligned Metrics) */}
       {!loading && projects.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3.5 sm:gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: Proyectos Activos */}
           <motion.div
             initial={shouldReduceMotion ? {} : { opacity: 0, y: 10 }}
             animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
             transition={{ duration: 0.18 }}
-            className="p-5 rounded-cards bg-carbon border border-graphite/80 hover:border-signal-teal/40 shadow-[0_4px_20px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.5),0_0_15px_rgba(25,217,232,0.1)] transition-all duration-200 flex flex-col justify-between relative overflow-hidden"
+            className="p-5 rounded-2xl bg-carbon border border-graphite/80 hover:border-signal-teal/40 shadow-[0_4px_24px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_16px_rgba(25,217,232,0.1)] transition-all duration-200 flex flex-col justify-between min-h-[175px] relative overflow-hidden group"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-[13px] font-medium text-fog">Proyectos Activos</span>
-              <div className="w-8 h-8 rounded-full bg-signal-teal/10 border border-signal-teal/20 text-signal-teal flex items-center justify-center shadow-[0_0_10px_rgba(25,217,232,0.2)]">
+            <div className="flex items-start justify-between gap-2">
+              <span className="text-[13px] font-medium text-fog tracking-wide">Proyectos Activos</span>
+              <div className="w-8 h-8 rounded-full bg-signal-teal/10 border border-signal-teal/25 text-signal-teal flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(25,217,232,0.2)]">
                 <FolderKanban className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-3">
-              <div className="flex items-baseline gap-2">
-                <span className="font-display text-3xl font-bold text-bone">
+            <div className="mt-2 space-y-1">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="font-display text-3xl font-bold text-bone tracking-tight">
                   {stats.totalProjects}
                 </span>
-                <span className="inline-flex items-center text-[11px] font-semibold text-signal-teal bg-signal-teal/10 px-1.5 py-0.5 rounded-full border border-signal-teal/30">
+                <span className="inline-flex items-center text-[11px] font-semibold text-signal-teal bg-signal-teal/10 px-2 py-0.5 rounded-full border border-signal-teal/30 shrink-0">
                   ↑ 100% activos
                 </span>
               </div>
-              <p className="text-[11px] text-fog mt-1">Espacios registrados</p>
+              <p className="text-[11px] text-fog truncate">Espacios registrados en el sistema</p>
             </div>
-            <NeonSparkline
-              points={[2, 3, 4, 3, 5, 4, stats.totalProjects || 6]}
-              color="#19D9E8"
-              gradientId="sparkline-cyan"
-            />
+            <div className="mt-3 pt-1 border-t border-graphite/40">
+              <NeonSparkline
+                points={[2, 3, 4, 3, 5, 4, stats.totalProjects || 6]}
+                color="#19D9E8"
+                gradientId="sparkline-cyan"
+                height={28}
+              />
+            </div>
           </motion.div>
 
           {/* Card 2: Sprints en Curso */}
@@ -552,32 +607,35 @@ export function DashboardView({
             initial={shouldReduceMotion ? {} : { opacity: 0, y: 10 }}
             animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
             transition={{ duration: 0.22 }}
-            className="p-5 rounded-cards bg-carbon border border-graphite/80 hover:border-pulse-green/40 shadow-[0_4px_20px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.5),0_0_15px_rgba(48,217,155,0.1)] transition-all duration-200 flex flex-col justify-between relative overflow-hidden"
+            className="p-5 rounded-2xl bg-carbon border border-graphite/80 hover:border-pulse-green/40 shadow-[0_4px_24px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_16px_rgba(48,217,155,0.1)] transition-all duration-200 flex flex-col justify-between min-h-[175px] relative overflow-hidden group"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-[13px] font-medium text-fog">Sprints en Curso</span>
-              <div className="w-8 h-8 rounded-full bg-pulse-green/10 border border-pulse-green/20 text-pulse-green flex items-center justify-center shadow-[0_0_10px_rgba(48,217,155,0.2)]">
+            <div className="flex items-start justify-between gap-2">
+              <span className="text-[13px] font-medium text-fog tracking-wide">Sprints en Curso</span>
+              <div className="w-8 h-8 rounded-full bg-pulse-green/10 border border-pulse-green/25 text-pulse-green flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(48,217,155,0.2)]">
                 <Activity className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-3">
-              <div className="flex items-baseline gap-2">
-                <span className="font-display text-3xl font-bold text-bone">
+            <div className="mt-2 space-y-1">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="font-display text-3xl font-bold text-bone tracking-tight">
                   {stats.activeSprintsCount}
                 </span>
-                <span className="inline-flex items-center text-[11px] font-semibold text-pulse-green bg-pulse-green/10 px-1.5 py-0.5 rounded-full border border-pulse-green/30">
+                <span className="inline-flex items-center text-[11px] font-semibold text-pulse-green bg-pulse-green/10 px-2 py-0.5 rounded-full border border-pulse-green/30 shrink-0">
                   ↑ Activo
                 </span>
               </div>
-              <p className="text-[11px] text-fog mt-1">
-                {stats.activeSprintsCount === 1 ? 'Sprint activo' : 'Sprints activos'}
+              <p className="text-[11px] text-fog truncate">
+                {stats.activeSprintsCount === 1 ? '1 Sprint activo' : `${stats.activeSprintsCount} Sprints activos`}
               </p>
             </div>
-            <NeonSparkline
-              points={[1, 1, 2, 2, 3, 2, stats.activeSprintsCount || 3]}
-              color="#30D99B"
-              gradientId="sparkline-green"
-            />
+            <div className="mt-3 pt-1 border-t border-graphite/40">
+              <NeonSparkline
+                points={[1, 1, 2, 2, 3, 2, stats.activeSprintsCount || 3]}
+                color="#30D99B"
+                gradientId="sparkline-green"
+                height={28}
+              />
+            </div>
           </motion.div>
 
           {/* Card 3: Historias de Usuario */}
@@ -585,38 +643,41 @@ export function DashboardView({
             initial={shouldReduceMotion ? {} : { opacity: 0, y: 10 }}
             animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
             transition={{ duration: 0.26 }}
-            className="p-5 rounded-cards bg-carbon border border-graphite/80 hover:border-signal-teal/40 shadow-[0_4px_20px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.5),0_0_15px_rgba(25,217,232,0.1)] transition-all duration-200 flex flex-col justify-between relative overflow-hidden"
+            className="p-5 rounded-2xl bg-carbon border border-graphite/80 hover:border-signal-teal/40 shadow-[0_4px_24px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_16px_rgba(25,217,232,0.1)] transition-all duration-200 flex flex-col justify-between min-h-[175px] relative overflow-hidden group"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-[13px] font-medium text-fog">Historias de Usuario</span>
-              <div className="w-8 h-8 rounded-full bg-signal-teal/10 border border-signal-teal/20 text-signal-teal flex items-center justify-center shadow-[0_0_10px_rgba(25,217,232,0.2)]">
+            <div className="flex items-start justify-between gap-2">
+              <span className="text-[13px] font-medium text-fog tracking-wide">Historias de Usuario</span>
+              <div className="w-8 h-8 rounded-full bg-signal-teal/10 border border-signal-teal/25 text-signal-teal flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(25,217,232,0.2)]">
                 <CheckCircle2 className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-3">
-              <div className="flex items-baseline gap-2">
-                <span className="font-display text-3xl font-bold text-bone">
+            <div className="mt-2 space-y-1">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="font-display text-3xl font-bold text-bone tracking-tight">
                   {stats.completedStories}
                 </span>
-                <span className="text-[13px] text-fog">/ {stats.totalStories}</span>
-                <span className="inline-flex items-center text-[11px] font-semibold text-pulse-green bg-pulse-green/10 px-1.5 py-0.5 rounded-full border border-pulse-green/30">
+                <span className="text-[13px] text-fog font-medium">/ {stats.totalStories}</span>
+                <span className="inline-flex items-center text-[11px] font-semibold text-pulse-green bg-pulse-green/10 px-2 py-0.5 rounded-full border border-pulse-green/30 shrink-0">
                   ↑{' '}
                   {stats.totalStories > 0
                     ? `${Math.round((stats.completedStories / stats.totalStories) * 100)}%`
                     : '0%'}
                 </span>
               </div>
-              <p className="text-[11px] text-pulse-green mt-1 font-medium">
+              <p className="text-[11px] text-pulse-green font-medium truncate">
                 {stats.totalStories > 0
                   ? `${Math.round((stats.completedStories / stats.totalStories) * 100)}% completadas`
                   : 'Sin historias'}
               </p>
             </div>
-            <NeonSparkline
-              points={[2, 4, 3, 6, 8, 7, stats.completedStories || 10]}
-              color="#19D9E8"
-              gradientId="sparkline-stories"
-            />
+            <div className="mt-3 pt-1 border-t border-graphite/40">
+              <NeonSparkline
+                points={[2, 4, 3, 6, 8, 7, stats.completedStories || 10]}
+                color="#19D9E8"
+                gradientId="sparkline-stories"
+                height={28}
+              />
+            </div>
           </motion.div>
 
           {/* Card 4: Entrega de Puntos */}
@@ -624,114 +685,213 @@ export function DashboardView({
             initial={shouldReduceMotion ? {} : { opacity: 0, y: 10 }}
             animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
             transition={{ duration: 0.3 }}
-            className="p-5 rounded-cards bg-carbon border border-graphite/80 hover:border-iris-violet/40 shadow-[0_4px_20px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_30px_rgba(0,0,0,0.5),0_0_15px_rgba(168,85,247,0.1)] transition-all duration-200 flex flex-col justify-between relative overflow-hidden"
+            className="p-5 rounded-2xl bg-carbon border border-graphite/80 hover:border-iris-violet/40 shadow-[0_4px_24px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_16px_rgba(168,85,247,0.1)] transition-all duration-200 flex flex-col justify-between min-h-[175px] relative overflow-hidden group"
           >
-            <div className="flex items-center justify-between">
-              <span className="text-[13px] font-medium text-fog">Entrega de Puntos</span>
-              <div className="w-8 h-8 rounded-full bg-iris-violet/10 border border-iris-violet/20 text-iris-violet flex items-center justify-center shadow-[0_0_10px_rgba(168,85,247,0.2)]">
+            <div className="flex items-start justify-between gap-2">
+              <span className="text-[13px] font-medium text-fog tracking-wide">Entrega de Puntos</span>
+              <div className="w-8 h-8 rounded-full bg-iris-violet/10 border border-iris-violet/25 text-iris-violet flex items-center justify-center shrink-0 shadow-[0_0_10px_rgba(168,85,247,0.2)]">
                 <Zap className="w-4 h-4" />
               </div>
             </div>
-            <div className="mt-3">
-              <div className="flex items-baseline gap-2">
-                <span className="font-display text-3xl font-bold text-bone">
+            <div className="mt-2 space-y-1">
+              <div className="flex items-baseline gap-2 flex-wrap">
+                <span className="font-display text-3xl font-bold text-bone tracking-tight">
                   {stats.completedPoints}
                 </span>
-                <span className="text-[13px] text-fog">/ {stats.totalPoints} pts</span>
-                <span className="inline-flex items-center text-[11px] font-semibold text-lavender bg-iris-violet/15 px-1.5 py-0.5 rounded-full border border-iris-violet/30">
+                <span className="text-[13px] text-fog font-medium">/ {stats.totalPoints} pts</span>
+                <span className="inline-flex items-center text-[11px] font-semibold text-lavender bg-iris-violet/15 px-2 py-0.5 rounded-full border border-iris-violet/30 shrink-0">
                   ↑ {stats.overallVelocity}%
                 </span>
               </div>
-              <p className="text-[11px] text-fog mt-1">
+              <p className="text-[11px] text-fog truncate">
                 {stats.overallVelocity}% de velocidad global
               </p>
             </div>
-            <NeonSparkline
-              points={[5, 8, 12, 10, 15, 14, stats.completedPoints || 18]}
-              color="#A855F7"
-              gradientId="sparkline-purple"
-            />
+            <div className="mt-3 pt-1 border-t border-graphite/40">
+              <NeonSparkline
+                points={[5, 8, 12, 10, 15, 14, stats.completedPoints || 18]}
+                color="#A855F7"
+                gradientId="sparkline-purple"
+                height={28}
+              />
+            </div>
           </motion.div>
         </div>
       )}
 
-      {/* Middle Visual Analytics Row (Matching Aether Analytics Chart Layout) */}
+      {/* Middle Visual Analytics Row: Chart 1 (Burndown vs Burnup) & Chart 2 (Donut Distribución) */}
       {!loading && projects.length > 0 && (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-          {/* Chart 1: Sprint Velocity Trend Area Chart (Aether Analytics Area Chart style) */}
-          <div className="lg:col-span-8 p-5 rounded-cards bg-carbon border border-graphite/80 shadow-[0_4px_20px_rgba(0,0,0,0.35)]">
-            <div className="flex items-center justify-between mb-4">
+          {/* Chart 1: Sprint Burndown (Trabajo Restante) / Burnup */}
+          <div className="lg:col-span-8 p-5 rounded-2xl bg-carbon border border-graphite/80 shadow-[0_4px_24px_rgba(0,0,0,0.35)] flex flex-col justify-between">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
               <div>
-                <h3 className="text-[14px] font-semibold text-bone">Rendimiento y Burndown del Sprint</h3>
+                <h3 className="text-[15px] font-semibold text-bone">Rendimiento y Burndown del Sprint</h3>
                 <div className="flex items-baseline gap-2 mt-1">
                   <span className="text-2xl font-bold font-display text-bone">
-                    {stats.completedPoints} pts entregados
+                    {chartMode === 'burndown'
+                      ? `${Math.max(0, stats.totalPoints - stats.completedPoints)} pts restantes`
+                      : `${stats.completedPoints} pts entregados`}
                   </span>
-                  <span className="inline-flex items-center text-[11px] font-semibold text-signal-teal bg-signal-teal/10 px-1.5 py-0.5 rounded-full border border-signal-teal/30">
-                    ↑ {stats.overallVelocity}% ritmo
+                  <span className="inline-flex items-center gap-1 text-[11px] font-semibold text-signal-teal bg-signal-teal/10 px-2 py-0.5 rounded-full border border-signal-teal/30">
+                    {chartMode === 'burndown' ? (
+                      <>
+                        <TrendingDown className="w-3 h-3" /> {stats.completedPoints} pts quemados
+                      </>
+                    ) : (
+                      <>
+                        <TrendingUp className="w-3 h-3" /> {stats.overallVelocity}% entregado
+                      </>
+                    )}
                   </span>
                 </div>
               </div>
-              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded bg-obsidian border border-graphite text-[11px] text-fog">
-                <span>Diario</span>
+
+              {/* View Toggle (Burndown vs Burnup) */}
+              <div className="flex items-center p-1 rounded-inputs bg-obsidian border border-graphite text-[11px] self-start sm:self-center">
+                <button
+                  type="button"
+                  onClick={() => setChartMode('burndown')}
+                  className={`px-2.5 py-1 rounded font-medium transition-all ${
+                    chartMode === 'burndown'
+                      ? 'bg-signal-teal/15 text-signal-teal border border-signal-teal/30 shadow-xs'
+                      : 'text-fog hover:text-bone'
+                  }`}
+                >
+                  Burndown (Restante)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setChartMode('burnup')}
+                  className={`px-2.5 py-1 rounded font-medium transition-all ${
+                    chartMode === 'burnup'
+                      ? 'bg-iris-violet/15 text-lavender border border-iris-violet/30 shadow-xs'
+                      : 'text-fog hover:text-bone'
+                  }`}
+                >
+                  Burnup (Acumulado)
+                </button>
               </div>
             </div>
 
-            {/* Glowing Neon Area Chart SVG */}
-            <div className="relative h-44 w-full">
-              <svg viewBox="0 0 500 140" className="w-full h-full overflow-visible" aria-label="Gráfico de Rendimiento">
+            {/* Glowing Chart SVG Container */}
+            <div className="relative h-48 w-full my-2">
+              <svg
+                viewBox="0 0 500 160"
+                className="w-full h-full block"
+                preserveAspectRatio="none"
+                aria-label="Gráfico de Burndown y Rendimiento"
+              >
                 <defs>
-                  <linearGradient id="chartGradientCyan" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#19D9E8" stopOpacity="0.35" />
+                  <linearGradient id="burndownGradCyan" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#19D9E8" stopOpacity="0.3" />
                     <stop offset="100%" stopColor="#19D9E8" stopOpacity="0.0" />
                   </linearGradient>
+                  <linearGradient id="burnupGradPurple" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#A855F7" stopOpacity="0.3" />
+                    <stop offset="100%" stopColor="#A855F7" stopOpacity="0.0" />
+                  </linearGradient>
                 </defs>
-                {/* Horizontal reference grid lines */}
-                <line x1="0" y1="30" x2="500" y2="30" stroke="#1C293D" strokeDasharray="3 3" />
-                <line x1="0" y1="70" x2="500" y2="70" stroke="#1C293D" strokeDasharray="3 3" />
-                <line x1="0" y1="110" x2="500" y2="110" stroke="#1C293D" strokeDasharray="3 3" />
 
-                {/* Area fill */}
-                <path
-                  d="M 0 110 Q 50 85, 100 95 T 200 65 T 300 45 T 400 35 T 500 20 L 500 140 L 0 140 Z"
-                  fill="url(#chartGradientCyan)"
-                />
-                {/* Glowing neon stroke */}
-                <path
-                  d="M 0 110 Q 50 85, 100 95 T 200 65 T 300 45 T 400 35 T 500 20"
-                  fill="none"
-                  stroke="#19D9E8"
-                  strokeWidth="2.5"
-                  strokeLinecap="round"
-                  style={{ filter: 'drop-shadow(0 0 8px #19D9E8)' }}
-                />
-                {/* Highlight Point */}
-                <circle cx="400" cy="35" r="4" fill="#19D9E8" stroke="#070D16" strokeWidth="2" style={{ filter: 'drop-shadow(0 0 6px #19D9E8)' }} />
-                <circle cx="500" cy="20" r="5" fill="#FFFFFF" stroke="#19D9E8" strokeWidth="2.5" style={{ filter: 'drop-shadow(0 0 8px #19D9E8)' }} />
+                {/* Reference Grid Lines */}
+                <line x1="20" y1="35" x2="480" y2="35" stroke="#1C293D" strokeDasharray="3 3" />
+                <line x1="20" y1="75" x2="480" y2="75" stroke="#1C293D" strokeDasharray="3 3" />
+                <line x1="20" y1="115" x2="480" y2="115" stroke="#1C293D" strokeDasharray="3 3" />
+
+                {chartMode === 'burndown' ? (
+                  <>
+                    {/* Ideal Burndown Line (Dotted Gray from top-left to bottom-right) */}
+                    <line
+                      x1="20"
+                      y1="30"
+                      x2="480"
+                      y2="140"
+                      stroke="#64748B"
+                      strokeDasharray="4 4"
+                      strokeWidth="1.5"
+                    />
+
+                    {/* Actual Burndown Area (Descending toward 0) */}
+                    <path
+                      d="M 20 30 Q 120 40, 200 65 T 320 85 T 420 110 L 480 135 L 480 160 L 20 160 Z"
+                      fill="url(#burndownGradCyan)"
+                    />
+                    <path
+                      d="M 20 30 Q 120 40, 200 65 T 320 85 T 420 110 L 480 135"
+                      fill="none"
+                      stroke="#19D9E8"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      style={{ filter: 'drop-shadow(0 0 6px #19D9E8)' }}
+                    />
+                    <circle cx="20" cy="30" r="4" fill="#19D9E8" stroke="#070D16" strokeWidth="2" />
+                    <circle cx="200" cy="65" r="4" fill="#19D9E8" stroke="#070D16" strokeWidth="2" />
+                    <circle cx="320" cy="85" r="4" fill="#19D9E8" stroke="#070D16" strokeWidth="2" />
+                    <circle
+                      cx="480"
+                      cy="135"
+                      r="5"
+                      fill="#FFFFFF"
+                      stroke="#19D9E8"
+                      strokeWidth="2.5"
+                      style={{ filter: 'drop-shadow(0 0 8px #19D9E8)' }}
+                    />
+                  </>
+                ) : (
+                  <>
+                    {/* Burnup Accumulated Area (Ascending toward committed total) */}
+                    <path
+                      d="M 20 145 Q 120 125, 220 90 T 360 55 T 480 30 L 480 160 L 20 160 Z"
+                      fill="url(#burnupGradPurple)"
+                    />
+                    <path
+                      d="M 20 145 Q 120 125, 220 90 T 360 55 T 480 30"
+                      fill="none"
+                      stroke="#A855F7"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                      style={{ filter: 'drop-shadow(0 0 6px #A855F7)' }}
+                    />
+                    <circle cx="20" cy="145" r="4" fill="#A855F7" stroke="#070D16" strokeWidth="2" />
+                    <circle cx="220" cy="90" r="4" fill="#A855F7" stroke="#070D16" strokeWidth="2" />
+                    <circle
+                      cx="480"
+                      cy="30"
+                      r="5"
+                      fill="#FFFFFF"
+                      stroke="#A855F7"
+                      strokeWidth="2.5"
+                      style={{ filter: 'drop-shadow(0 0 8px #A855F7)' }}
+                    />
+                  </>
+                )}
               </svg>
             </div>
+
+            {/* Timeline X-Axis Labels */}
             <div className="flex justify-between items-center text-[11px] text-fog font-mono pt-2 border-t border-graphite/70">
-              <span>Día 1</span>
+              <span>Día 1 (Inicio)</span>
               <span>Día 4</span>
-              <span>Día 8</span>
+              <span>Día 8 (Mitad)</span>
               <span>Día 11</span>
               <span>Día 14 (Cierre)</span>
             </div>
           </div>
 
-          {/* Chart 2: Donut Chart - Distribución del Trabajo (Direct match to Aether Analytics Donut) */}
-          <div className="lg:col-span-4 p-5 rounded-cards bg-carbon border border-graphite/80 shadow-[0_4px_20px_rgba(0,0,0,0.35)] flex flex-col justify-between">
+          {/* Chart 2: Donut Chart - Distribución del Trabajo (Perfect Geometry & Clean Legend) */}
+          <div className="lg:col-span-4 p-5 rounded-2xl bg-carbon border border-graphite/80 shadow-[0_4px_24px_rgba(0,0,0,0.35)] flex flex-col justify-between">
             <div className="flex items-center justify-between mb-2">
-              <h3 className="text-[14px] font-semibold text-bone">Distribución del Trabajo</h3>
-              <span className="text-[11px] text-signal-teal hover:underline cursor-pointer">Detalle</span>
+              <h3 className="text-[15px] font-semibold text-bone">Distribución del Trabajo</h3>
+              <span className="text-[11px] text-signal-teal font-mono">Consolidado</span>
             </div>
 
-            <div className="flex items-center justify-center gap-4 py-2">
-              {/* SVG Donut */}
-              <div className="relative w-32 h-32 shrink-0">
+            {/* Circular Donut Centered */}
+            <div className="flex flex-col items-center justify-center py-2">
+              <div className="relative w-36 h-36 shrink-0 my-1">
                 <svg viewBox="0 0 100 100" className="w-full h-full -rotate-90">
-                  {/* Background track */}
-                  <circle cx="50" cy="50" r="38" fill="none" stroke="#1C293D" strokeWidth="12" />
+                  {/* Background Track */}
+                  <circle cx="50" cy="50" r="38" fill="none" stroke="#1C293D" strokeWidth="11" />
+
                   {/* Segment 1: Hecho (Emerald #30D99B) */}
                   <circle
                     cx="50"
@@ -739,11 +899,12 @@ export function DashboardView({
                     r="38"
                     fill="none"
                     stroke="#30D99B"
-                    strokeWidth="12"
-                    strokeDasharray="238"
-                    strokeDashoffset={238 - (238 * (stats.overallVelocity || 20)) / 100}
-                    style={{ filter: 'drop-shadow(0 0 6px rgba(48,217,155,0.4))' }}
+                    strokeWidth="11"
+                    strokeDasharray={`${donutData.doneLen} ${donutData.C}`}
+                    strokeDashoffset="0"
+                    style={{ filter: 'drop-shadow(0 0 4px rgba(48,217,155,0.4))' }}
                   />
+
                   {/* Segment 2: En Progreso (Violet #A855F7) */}
                   <circle
                     cx="50"
@@ -751,11 +912,12 @@ export function DashboardView({
                     r="38"
                     fill="none"
                     stroke="#A855F7"
-                    strokeWidth="12"
-                    strokeDasharray="238"
-                    strokeDashoffset={238 - 60}
-                    style={{ filter: 'drop-shadow(0 0 6px rgba(168,85,247,0.4))' }}
+                    strokeWidth="11"
+                    strokeDasharray={`${donutData.inProgressLen} ${donutData.C}`}
+                    strokeDashoffset={-donutData.doneLen}
+                    style={{ filter: 'drop-shadow(0 0 4px rgba(168,85,247,0.4))' }}
                   />
+
                   {/* Segment 3: En Revisión (Cyan #19D9E8) */}
                   <circle
                     cx="50"
@@ -763,50 +925,87 @@ export function DashboardView({
                     r="38"
                     fill="none"
                     stroke="#19D9E8"
-                    strokeWidth="12"
-                    strokeDasharray="238"
-                    strokeDashoffset={238 - 30}
-                    style={{ filter: 'drop-shadow(0 0 6px rgba(25,217,232,0.4))' }}
+                    strokeWidth="11"
+                    strokeDasharray={`${donutData.testingLen} ${donutData.C}`}
+                    strokeDashoffset={-(donutData.doneLen + donutData.inProgressLen)}
+                    style={{ filter: 'drop-shadow(0 0 4px rgba(25,217,232,0.4))' }}
+                  />
+
+                  {/* Segment 4: Por Hacer (Smoke / Gray) */}
+                  <circle
+                    cx="50"
+                    cy="50"
+                    r="38"
+                    fill="none"
+                    stroke="#64748B"
+                    strokeWidth="11"
+                    strokeDasharray={`${donutData.todoLen} ${donutData.C}`}
+                    strokeDashoffset={-(donutData.doneLen + donutData.inProgressLen + donutData.testingLen)}
                   />
                 </svg>
+
+                {/* Donut Center Display */}
                 <div className="absolute inset-0 flex flex-col items-center justify-center text-center pointer-events-none">
-                  <span className="text-[10px] text-fog uppercase">Total</span>
-                  <span className="text-base font-bold text-bone font-mono leading-none">
+                  <span className="text-[10px] text-fog uppercase tracking-wider font-semibold">Total</span>
+                  <span className="text-xl font-bold text-bone font-mono leading-tight">
                     {stats.totalPoints} pts
                   </span>
-                </div>
-              </div>
-
-              {/* Donut Legend */}
-              <div className="space-y-1.5 text-[11px] min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-pulse-green shadow-[0_0_6px_#30D99B] shrink-0" />
-                  <span className="text-fog truncate">Hecho</span>
-                  <span className="font-mono text-bone ml-auto">{stats.overallVelocity}%</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-signal-teal shadow-[0_0_6px_#19D9E8] shrink-0" />
-                  <span className="text-fog truncate">En Revisión</span>
-                  <span className="font-mono text-bone ml-auto">18%</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-iris-violet shadow-[0_0_6px_#A855F7] shrink-0" />
-                  <span className="text-fog truncate">En Progreso</span>
-                  <span className="font-mono text-bone ml-auto">25%</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-ash shrink-0" />
-                  <span className="text-fog truncate">Por Hacer</span>
-                  <span className="font-mono text-bone ml-auto">
-                    {Math.max(0, 100 - stats.overallVelocity - 43)}%
+                  <span className="text-[10px] text-signal-teal font-medium">
+                    {stats.totalStories} historias
                   </span>
                 </div>
               </div>
             </div>
 
-            <div className="pt-2 border-t border-graphite/70 flex items-center justify-between text-[11px] text-fog">
-              <span>Flujo de Tareas</span>
-              <span className="text-pulse-green font-medium">Equilibrado</span>
+            {/* Balanced 2x2 Legend Grid */}
+            <div className="grid grid-cols-2 gap-2 text-[12px] pt-2 border-t border-graphite/60">
+              <div className="flex items-center justify-between p-1.5 rounded-inputs bg-obsidian/60 border border-graphite/40">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="w-2.5 h-2.5 rounded-full bg-pulse-green shadow-[0_0_6px_#30D99B] shrink-0" />
+                  <span className="text-fog truncate">Hecho</span>
+                </div>
+                <span className="font-mono font-bold text-bone tabular-nums ml-1">
+                  {donutData.donePct}%
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-1.5 rounded-inputs bg-obsidian/60 border border-graphite/40">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="w-2.5 h-2.5 rounded-full bg-signal-teal shadow-[0_0_6px_#19D9E8] shrink-0" />
+                  <span className="text-fog truncate">En Revisión</span>
+                </div>
+                <span className="font-mono font-bold text-bone tabular-nums ml-1">
+                  {donutData.testingPct}%
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-1.5 rounded-inputs bg-obsidian/60 border border-graphite/40">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="w-2.5 h-2.5 rounded-full bg-iris-violet shadow-[0_0_6px_#A855F7] shrink-0" />
+                  <span className="text-fog truncate">En Progreso</span>
+                </div>
+                <span className="font-mono font-bold text-bone tabular-nums ml-1">
+                  {donutData.inProgressPct}%
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between p-1.5 rounded-inputs bg-obsidian/60 border border-graphite/40">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <span className="w-2.5 h-2.5 rounded-full bg-ash shrink-0" />
+                  <span className="text-fog truncate">Por Hacer</span>
+                </div>
+                <span className="font-mono font-bold text-bone tabular-nums ml-1">
+                  {donutData.todoPct}%
+                </span>
+              </div>
+            </div>
+
+            {/* Card Footer Status */}
+            <div className="pt-2 mt-2 border-t border-graphite/60 flex items-center justify-between text-[11px] text-fog">
+              <span>Flujo de Tareas:</span>
+              <span className="text-pulse-green font-semibold flex items-center gap-1">
+                <CheckCircle2 className="w-3.5 h-3.5" /> Flujo Saludable
+              </span>
             </div>
           </div>
         </div>
@@ -864,7 +1063,7 @@ export function DashboardView({
                   initial={shouldReduceMotion ? {} : { opacity: 0, y: 12 }}
                   animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
                   transition={{ duration: 0.18, delay: Math.min(index * 0.05, 0.3) }}
-                  className="group rounded-cards bg-carbon border border-graphite/80 hover:border-signal-teal/40 hover:shadow-[0_8px_30px_rgba(0,0,0,0.5),0_0_20px_rgba(25,217,232,0.08)] transition-all duration-200 p-5 flex flex-col justify-between gap-5 relative overflow-hidden"
+                  className="group rounded-2xl bg-carbon border border-graphite/80 hover:border-signal-teal/40 hover:shadow-[0_8px_30px_rgba(0,0,0,0.5),0_0_20px_rgba(25,217,232,0.08)] transition-all duration-200 p-5 flex flex-col justify-between gap-5 relative overflow-hidden"
                 >
                   {/* Subtle top indicator bar */}
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-signal-teal via-iris-violet to-pulse-green opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
@@ -873,7 +1072,7 @@ export function DashboardView({
                     {/* Top metadata */}
                     <div className="flex items-center justify-between gap-2 text-[12px]">
                       <div className="flex items-center gap-2 min-w-0">
-                        {/* Square Logo Glyph matching Aether Core/Pro style */}
+                        {/* Square Logo Glyph */}
                         <div className="w-7 h-7 rounded-lg bg-signal-teal/15 border border-signal-teal/30 flex items-center justify-center text-signal-teal font-mono font-bold text-xs shadow-[0_0_8px_rgba(25,217,232,0.25)] shrink-0">
                           {project.code.slice(0, 2)}
                         </div>
