@@ -4,6 +4,9 @@ dist/
 coverage/
 .DS_Store
 *.log
+*.tmp
+*.bak
+.vscode/
 data/
 .fleet/
 .env*

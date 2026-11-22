@@ -8,8 +8,11 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
 import java.time.OffsetDateTime;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Entity
 @Table(name = "users")
@@ -37,6 +40,10 @@ public class User implements UserDetails {
     @Column(nullable = false, length = 50)
     private Role role;
 
+    @Column(name = "global_role", nullable = false, length = 50)
+    @Builder.Default
+    private String globalRole = "USER";
+
     @Column(length = 100)
     private String title;
 
@@ -44,9 +51,26 @@ public class User implements UserDetails {
     @Builder.Default
     private OffsetDateTime createdAt = OffsetDateTime.now();
 
+    @OneToMany(mappedBy = "user", fetch = FetchType.EAGER)
+    @Builder.Default
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
+    private List<ProjectMembership> memberships = new ArrayList<>();
+
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority(role.name()));
+        Set<GrantedAuthority> authorities = new HashSet<>();
+        if (role != null) {
+            authorities.add(new SimpleGrantedAuthority(role.name()));
+        }
+        if (memberships != null) {
+            for (ProjectMembership pm : memberships) {
+                if (pm.getScrumRole() != null) {
+                    authorities.add(new SimpleGrantedAuthority("ROLE_" + pm.getScrumRole().name()));
+                }
+            }
+        }
+        return authorities;
     }
 
     @Override

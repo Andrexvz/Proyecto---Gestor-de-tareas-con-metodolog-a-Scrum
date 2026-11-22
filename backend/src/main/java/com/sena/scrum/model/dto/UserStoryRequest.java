@@ -16,6 +16,8 @@ public class UserStoryRequest {
     @NotNull(message = "El ID del proyecto es requerido")
     private Long projectId;
 
+    private Long epicId; // Opcional (vincular a Épica)
+
     private Long sprintId; // Opcional (null = Product Backlog)
 
     @NotBlank(message = "El código de la historia es requerido (ej. CBA-101)")

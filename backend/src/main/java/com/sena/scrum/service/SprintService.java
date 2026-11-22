@@ -2,17 +2,24 @@ package com.sena.scrum.service;
 
 import com.sena.scrum.exception.BusinessRuleException;
 import com.sena.scrum.exception.ResourceNotFoundException;
+import com.sena.scrum.model.dto.SprintCloseRequest;
+import com.sena.scrum.model.dto.SprintCloseResponse;
 import com.sena.scrum.model.dto.SprintRequest;
 import com.sena.scrum.model.dto.SprintResponse;
 import com.sena.scrum.model.entity.Project;
 import com.sena.scrum.model.entity.Sprint;
+import com.sena.scrum.model.entity.User;
 import com.sena.scrum.model.entity.UserStory;
+import com.sena.scrum.model.enums.ScrumRole;
 import com.sena.scrum.model.enums.SprintStatus;
+import com.sena.scrum.repository.ProjectMembershipRepository;
 import com.sena.scrum.repository.SprintRepository;
 import com.sena.scrum.repository.UserStoryRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.OffsetDateTime;
 import java.util.List;
@@ -25,6 +32,8 @@ public class SprintService {
     private final SprintRepository sprintRepository;
     private final ProjectService projectService;
     private final UserStoryRepository userStoryRepository;
+    private final ProjectMembershipRepository membershipRepository;
+    private final AuditLogService auditLogService;
 
     @Transactional(readOnly = true)
     public List<SprintResponse> getSprintsByProject(Long projectId) {
@@ -88,6 +97,100 @@ public class SprintService {
         }
 
         return mapToResponse(sprintRepository.save(sprint));
+    }
+
+    @Transactional
+    public SprintResponse startSprint(Long id) {
+        Sprint sprint = findEntityById(id);
+        if (sprint.getStatus() == SprintStatus.ACTIVE) {
+            return mapToResponse(sprint);
+        }
+        applyStatusTransition(sprint, SprintStatus.ACTIVE);
+        return mapToResponse(sprintRepository.save(sprint));
+    }
+
+    @Transactional
+    public SprintCloseResponse closeSprint(Long id, SprintCloseRequest request, User actor) {
+        Sprint sprint = findEntityById(id);
+
+        if (sprint.getStatus() == SprintStatus.COMPLETED) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "El Sprint ya se encuentra cerrado");
+        }
+
+        // Valida permiso: Scrum Master exclusivo del proyecto (RF6 / HU #10)
+        validateCanCloseSprint(actor, sprint.getProject().getId());
+
+        List<UserStory> sprintStories = userStoryRepository.findBySprintId(sprint.getId());
+        int plannedPoints = sprintStories.stream()
+                .mapToInt(s -> s.getStoryPoints() != null ? s.getStoryPoints() : 0)
+                .sum();
+
+        List<UserStory> completedStories = sprintStories.stream()
+                .filter(s -> Boolean.TRUE.equals(s.getIsCompleted()))
+                .toList();
+
+        int deliveredPoints = completedStories.stream()
+                .mapToInt(s -> s.getStoryPoints() != null ? s.getStoryPoints() : 0)
+                .sum();
+
+        List<UserStory> incompleteStories = sprintStories.stream()
+                .filter(s -> !Boolean.TRUE.equals(s.getIsCompleted()))
+                .toList();
+
+        Sprint targetSprint = null;
+        if ("NEXT_SPRINT".equalsIgnoreCase(request.getDestination()) && request.getTargetSprintId() != null) {
+            targetSprint = findEntityById(request.getTargetSprintId());
+            if (targetSprint.getStatus() == SprintStatus.COMPLETED) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "El Sprint de destino no puede estar cerrado");
+            }
+        }
+
+        // Transferir historias incompletas
+        for (UserStory story : incompleteStories) {
+            story.setSprint(targetSprint); // Si es null, regresa a Backlog
+            userStoryRepository.save(story);
+        }
+
+        sprint.setStatus(SprintStatus.COMPLETED);
+        sprint.setClosedAt(OffsetDateTime.now());
+        sprint.setVelocity(deliveredPoints);
+        sprint.setDeliveredPoints(deliveredPoints);
+        sprint.setPlannedPoints(plannedPoints);
+        sprintRepository.save(sprint);
+
+        String destinationName = targetSprint != null ? targetSprint.getName() : "Product Backlog";
+
+        auditLogService.logEvent(
+                actor,
+                "SPRINT_CLOSED",
+                "SPRINT",
+                String.valueOf(sprint.getId()),
+                "Cierre del Sprint \"" + sprint.getName() + "\". Velocidad real entregada: " +
+                        deliveredPoints + " Story Points (" + completedStories.size() + " historias completadas). " +
+                        incompleteStories.size() + " historias incompletas transferidas a: " + destinationName + "."
+        );
+
+        return SprintCloseResponse.builder()
+                .sprintId(sprint.getId())
+                .sprintName(sprint.getName())
+                .completedStoriesCount(completedStories.size())
+                .returnedStoriesCount(incompleteStories.size())
+                .deliveredPoints(deliveredPoints)
+                .plannedPoints(plannedPoints)
+                .velocity(deliveredPoints)
+                .targetDestination(destinationName)
+                .build();
+    }
+
+    private void validateCanCloseSprint(User user, Long projectId) {
+        if ("ADMIN".equals(user.getGlobalRole())) return;
+        boolean isSm = membershipRepository.findByProjectIdAndUserId(projectId, user.getId())
+                .map(m -> m.getScrumRole() == ScrumRole.SCRUM_MASTER)
+                .orElse(false);
+        if (!isSm) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Solo el Scrum Master asignado al proyecto puede cerrar Sprints (RF6 / HU #10)");
+        }
     }
 
     @Transactional

@@ -24,6 +24,7 @@ public class UserStoryService {
     private final UserStoryRepository userStoryRepository;
     private final ProjectService projectService;
     private final SprintService sprintService;
+    private final com.sena.scrum.repository.EpicRepository epicRepository;
 
     @Transactional(readOnly = true)
     public List<UserStoryResponse> getStoriesByProject(Long projectId) {
@@ -62,6 +63,10 @@ public class UserStoryService {
         if (request.getSprintId() != null) {
             sprint = sprintService.findEntityById(request.getSprintId());
         }
+        com.sena.scrum.model.entity.Epic epic = null;
+        if (request.getEpicId() != null) {
+            epic = epicRepository.findById(request.getEpicId()).orElse(null);
+        }
 
         String code = request.getCode();
         if (code == null || code.isBlank()) {
@@ -72,6 +77,7 @@ public class UserStoryService {
         UserStory story = UserStory.builder()
                 .project(project)
                 .sprint(sprint)
+                .epic(epic)
                 .code(code.toUpperCase().trim())
                 .title(request.getTitle().trim())
                 .description(request.getDescription().trim())
@@ -93,6 +99,11 @@ public class UserStoryService {
             story.setSprint(sprint);
         } else {
             story.setSprint(null);
+        }
+
+        if (request.getEpicId() != null) {
+            com.sena.scrum.model.entity.Epic epic = epicRepository.findById(request.getEpicId()).orElse(null);
+            story.setEpic(epic);
         }
 
         if (request.getCode() != null && !request.getCode().isBlank()) {
@@ -149,6 +160,8 @@ public class UserStoryService {
             }
         }
 
+        com.sena.scrum.model.entity.Epic epic = story.getEpic();
+
         return UserStoryResponse.builder()
                 .id(story.getId())
                 .projectId(story.getProject().getId())
@@ -156,6 +169,9 @@ public class UserStoryService {
                 .projectName(story.getProject().getName())
                 .sprintId(story.getSprint() != null ? story.getSprint().getId() : null)
                 .sprintName(story.getSprint() != null ? story.getSprint().getName() : null)
+                .epicId(epic != null ? epic.getId() : null)
+                .epicName(epic != null ? epic.getName() : null)
+                .epicColorHex(epic != null ? epic.getColorHex() : null)
                 .code(story.getCode())
                 .title(story.getTitle())
                 .description(story.getDescription())

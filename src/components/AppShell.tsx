@@ -17,6 +17,7 @@ import {
   ChevronRight,
   Palette,
   HelpCircle,
+  ShieldCheck,
 } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -35,6 +36,7 @@ interface AppShellProps {
   onOpenCommandPalette: () => void;
   onOpenOnboarding?: () => void;
   onOpenThemeModal?: () => void;
+  onOpenAuditModal?: () => void;
   primaryAction?: React.ReactNode;
   children?: React.ReactNode;
 }
@@ -49,6 +51,7 @@ export function AppShell({
   onOpenCommandPalette,
   onOpenOnboarding,
   onOpenThemeModal,
+  onOpenAuditModal,
   primaryAction,
   children,
 }: AppShellProps) {
@@ -92,6 +95,7 @@ export function AppShell({
   }, [notifOpen, mobileMenuOpen]);
 
   const unreadCount = notifications.filter((n) => !n.readStatus).length;
+  const canViewAudit = user?.globalRole === 'ADMIN' || projects.some((p) => p.myRole === 'SCRUM_MASTER');
 
   const projectNavItems: Array<{
     id: ActiveRoute;
@@ -499,6 +503,19 @@ export function AppShell({
                 aria-label="Abrir tutorial interactivo de Scrum"
               >
                 <HelpCircle className="w-4 h-4 text-signal-teal transition-transform hover:scale-105" />
+              </button>
+            )}
+
+            {/* Audit Log Security Button (RNF-06) */}
+            {canViewAudit && onOpenAuditModal && (
+              <button
+                type="button"
+                onClick={onOpenAuditModal}
+                className="p-2 rounded-inputs bg-carbon border border-graphite hover:border-smoke text-mist hover:text-paper transition-all shadow-subtle hover:bg-graphite/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-iris-violet/50"
+                title="Registro de Auditoría y Seguridad (RNF-06)"
+                aria-label="Abrir registro de auditoría"
+              >
+                <ShieldCheck className="w-4 h-4 text-signal-teal transition-transform hover:scale-105" />
               </button>
             )}
 

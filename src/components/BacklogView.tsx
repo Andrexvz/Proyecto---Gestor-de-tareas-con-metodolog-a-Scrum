@@ -18,6 +18,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { apiFetch } from '../lib/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmDialog, PrioritySignal } from './UIHelpers';
+import { EpicManagerModal } from './EpicManagerModal';
 import {
   Button,
   Input,
@@ -25,7 +26,7 @@ import {
   EmptyState,
   SkeletonLoader,
 } from './ui';
-import type { ProjectSummary, Sprint, StoryPriority, TaskItem, UserStory } from '../types/scrum';
+import type { Epic, ProjectSummary, Sprint, StoryPriority, TaskItem, UserStory } from '../types/scrum';
 
 type SortOption = 'DEFAULT' | 'POINTS_DESC' | 'POINTS_ASC' | 'PRIORITY' | 'TITLE';
 
@@ -34,6 +35,7 @@ interface BacklogViewProps {
   sprints: Sprint[];
   stories: UserStory[];
   tasks: TaskItem[];
+  epics?: Epic[];
   loading: boolean;
   onNewStory: () => void;
   onEditStory: (story: UserStory) => void;
@@ -46,6 +48,7 @@ export function BacklogView({
   sprints,
   stories,
   tasks,
+  epics = [],
   loading,
   onNewStory,
   onEditStory,
@@ -58,6 +61,9 @@ export function BacklogView({
   const [search, setSearch] = useState('');
   const [priorityFilter, setPriorityFilter] = useState<'ALL' | StoryPriority>('ALL');
   const [scopeFilter, setScopeFilter] = useState<'ALL' | 'BACKLOG' | 'SPRINTS'>('ALL');
+  const [selectedEpicFilter, setSelectedEpicFilter] = useState<'ALL' | 'NO_EPIC' | number>('ALL');
+  const [groupByEpic, setGroupByEpic] = useState(false);
+  const [epicManagerOpen, setEpicManagerOpen] = useState(false);
   const [sortBy, setSortBy] = useState<SortOption>('DEFAULT');
   const [expandedId, setExpandedId] = useState<number | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<UserStory | null>(null);
@@ -86,12 +92,15 @@ export function BacklogView({
       if (scopeFilter === 'BACKLOG' && s.sprintId !== null) return false;
       if (scopeFilter === 'SPRINTS' && s.sprintId === null) return false;
       if (priorityFilter !== 'ALL' && s.priority !== priorityFilter) return false;
+      if (selectedEpicFilter === 'NO_EPIC' && s.epicId) return false;
+      if (typeof selectedEpicFilter === 'number' && s.epicId !== selectedEpicFilter) return false;
       if (search.trim()) {
         const q = search.trim().toLowerCase();
         const match =
           s.title.toLowerCase().includes(q) ||
           s.code.toLowerCase().includes(q) ||
-          s.description.toLowerCase().includes(q);
+          s.description.toLowerCase().includes(q) ||
+          (s.epic && s.epic.name.toLowerCase().includes(q));
         if (!match) return false;
       }
       return true;
@@ -110,7 +119,7 @@ export function BacklogView({
     }
 
     return list;
-  }, [stories, scopeFilter, priorityFilter, search, sortBy]);
+  }, [stories, scopeFilter, priorityFilter, selectedEpicFilter, search, sortBy]);
 
   const handleDeleteStory = async () => {
     if (!deleteTarget) return;
@@ -158,6 +167,39 @@ export function BacklogView({
     }
   };
 
+  const storiesByEpic = useMemo(() => {
+    if (!groupByEpic) return [];
+    const groups: Array<{
+      epic: Epic | null;
+      stories: UserStory[];
+      totalPoints: number;
+    }> = [];
+
+    // Epics with matching stories
+    for (const epic of epics) {
+      const epicStories = filteredStories.filter((s) => s.epicId === epic.id);
+      if (epicStories.length > 0 || selectedEpicFilter === epic.id) {
+        groups.push({
+          epic,
+          stories: epicStories,
+          totalPoints: epicStories.reduce((sum, s) => sum + (s.storyPoints || 0), 0),
+        });
+      }
+    }
+
+    // Stories without epic
+    const noEpicStories = filteredStories.filter((s) => !s.epicId);
+    if (noEpicStories.length > 0) {
+      groups.push({
+        epic: null,
+        stories: noEpicStories,
+        totalPoints: noEpicStories.reduce((sum, s) => sum + (s.storyPoints || 0), 0),
+      });
+    }
+
+    return groups;
+  }, [groupByEpic, epics, filteredStories, selectedEpicFilter]);
+
   const totalPoints = filteredStories.reduce((acc, s) => acc + (s.storyPoints || 0), 0);
   const completedCount = filteredStories.filter((s) => s.isCompleted).length;
 
@@ -188,6 +230,15 @@ export function BacklogView({
         </div>
 
         <div className="flex items-center gap-2.5 shrink-0">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setEpicManagerOpen(true)}
+            icon={<Layers className="w-3.5 h-3.5 text-iris-violet" />}
+            title="Administrar Épicas del proyecto (RF3, HU #4)"
+          >
+            Épicas ({epics.length})
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -294,6 +345,53 @@ export function BacklogView({
             })}
           </div>
 
+          {/* Epic Filter Dropdown */}
+          {epics.length > 0 && (
+            <div className="flex items-center gap-1.5 px-2.5 py-1 bg-obsidian rounded-inputs border border-graphite text-[12px]">
+              <Layers className="w-3.5 h-3.5 text-fog shrink-0" />
+              <select
+                value={selectedEpicFilter}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setSelectedEpicFilter(
+                    val === 'ALL' ? 'ALL' : val === 'NO_EPIC' ? 'NO_EPIC' : Number(val)
+                  );
+                }}
+                className="bg-transparent text-mist text-[12px] font-medium focus:outline-none cursor-pointer"
+                aria-label="Filtrar por Épica"
+              >
+                <option value="ALL" className="bg-carbon text-bone">
+                  Todas las Épicas
+                </option>
+                <option value="NO_EPIC" className="bg-carbon text-fog">
+                  Sin Épica
+                </option>
+                {epics.map((ep) => (
+                  <option key={ep.id} value={ep.id} className="bg-carbon text-bone">
+                    ● {ep.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* Group by Epic toggle */}
+          {epics.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setGroupByEpic(!groupByEpic)}
+              className={`px-2.5 py-1 rounded-inputs border text-[12px] font-medium transition-colors flex items-center gap-1.5 cursor-pointer ${
+                groupByEpic
+                  ? 'bg-iris-violet/20 border-iris-violet text-iris-violet'
+                  : 'bg-obsidian border-graphite text-fog hover:text-bone'
+              }`}
+              title="Agrupar historias visualmente por Épica"
+            >
+              <Layers className="w-3.5 h-3.5" />
+              Agrupar por Épica
+            </button>
+          )}
+
           {/* Sort selector */}
           <div className="flex items-center gap-1.5 text-[12px]">
             <SlidersHorizontal className="w-3.5 h-3.5 text-fog shrink-0" />
@@ -358,12 +456,11 @@ export function BacklogView({
           }
         />
       ) : (
-        <div className="space-y-2.5">
-          {filteredStories.map((story) => {
+        (() => {
+          const renderStoryCard = (story: UserStory) => {
             const sprint = story.sprintId ? sprintById.get(story.sprintId) : null;
             const storyTasks = tasks.filter((t) => t.userStoryId === story.id);
             const doneTasks = storyTasks.filter((t) => t.status === 'DONE').length;
-            const inProgressTasks = storyTasks.filter((t) => t.status === 'IN_PROGRESS').length;
             const isExpanded = expandedId === story.id;
             const lockedDelete =
               sprint && (sprint.status === 'ACTIVE' || sprint.status === 'CLOSED');
@@ -403,6 +500,28 @@ export function BacklogView({
                           ·
                         </span>
                         <PrioritySignal priority={story.priority} />
+                        {story.epic && (
+                          <>
+                            <span className="text-ash" aria-hidden="true">
+                              ·
+                            </span>
+                            <span
+                              className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold border shadow-xs"
+                              style={{
+                                backgroundColor: `${story.epic.colorHex}18`,
+                                borderColor: `${story.epic.colorHex}50`,
+                                color: story.epic.colorHex,
+                              }}
+                              title={story.epic.description || story.epic.name}
+                            >
+                              <span
+                                className="w-1.5 h-1.5 rounded-full shrink-0"
+                                style={{ backgroundColor: story.epic.colorHex }}
+                              />
+                              {story.epic.name}
+                            </span>
+                          </>
+                        )}
                         <span className="text-ash" aria-hidden="true">
                           ·
                         </span>
@@ -601,9 +720,90 @@ export function BacklogView({
                 </AnimatePresence>
               </div>
             );
-          })}
-        </div>
+          };
+
+          if (groupByEpic && epics.length > 0) {
+            return (
+              <div className="space-y-6">
+                {epics.map((epic) => {
+                  const epicStories = filteredStories.filter((s) => s.epicId === epic.id);
+                  if (epicStories.length === 0) return null;
+                  const epicPoints = epicStories.reduce((acc, s) => acc + s.storyPoints, 0);
+                  return (
+                    <div
+                      key={epic.id}
+                      className="rounded-cards bg-carbon/50 border p-4 space-y-3 shadow-subtle"
+                      style={{ borderColor: `${epic.colorHex}40` }}
+                    >
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-graphite/60">
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <span
+                            className="w-3.5 h-3.5 rounded-full shrink-0 shadow-sm"
+                            style={{ backgroundColor: epic.colorHex }}
+                          />
+                          <h3 className="text-[14px] font-semibold text-bone truncate">{epic.name}</h3>
+                          {epic.description && (
+                            <span className="text-[12px] text-fog hidden md:inline truncate max-w-sm">
+                              — {epic.description}
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge variant="purple" size="sm">
+                            {epicStories.length} {epicStories.length === 1 ? 'historia' : 'historias'}
+                          </Badge>
+                          <Badge variant="default" size="sm">
+                            {epicPoints} pts
+                          </Badge>
+                        </div>
+                      </div>
+                      <div className="space-y-2.5">
+                        {epicStories.map((story) => renderStoryCard(story))}
+                      </div>
+                    </div>
+                  );
+                })}
+
+                {/* Stories without Epic */}
+                {filteredStories.some((s) => !s.epicId) && (
+                  <div className="rounded-cards bg-carbon/25 border border-dashed border-graphite p-4 space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-graphite/40">
+                      <div className="flex items-center gap-2">
+                        <Layers className="w-3.5 h-3.5 text-fog" />
+                        <h3 className="text-[13px] font-medium text-fog">Historias sin Épica Asignada</h3>
+                      </div>
+                      <Badge variant="default" size="sm">
+                        {filteredStories.filter((s) => !s.epicId).length} historias
+                      </Badge>
+                    </div>
+                    <div className="space-y-2.5">
+                      {filteredStories
+                        .filter((s) => !s.epicId)
+                        .map((story) => renderStoryCard(story))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          }
+
+          return (
+            <div className="space-y-2.5">
+              {filteredStories.map((story) => renderStoryCard(story))}
+            </div>
+          );
+        })()
       )}
+
+      {/* Epic Manager Modal (RF3, HU #4) */}
+      <EpicManagerModal
+        open={epicManagerOpen}
+        projectId={project.id}
+        epics={epics}
+        canManage={canManageStories || project.myRole === 'SCRUM_MASTER'}
+        onClose={() => setEpicManagerOpen(false)}
+        onRefresh={onRefresh}
+      />
 
       {/* Delete Story Confirmation Dialog */}
       <ConfirmDialog

@@ -7,15 +7,17 @@ import com.sena.scrum.model.entity.Sprint;
 import com.sena.scrum.model.entity.Task;
 import com.sena.scrum.model.entity.User;
 import com.sena.scrum.model.entity.UserStory;
+import com.sena.scrum.model.enums.ImpedimentStatus;
 import com.sena.scrum.model.enums.TaskStatus;
-import com.sena.scrum.repository.TaskRepository;
-import com.sena.scrum.repository.UserRepository;
-import com.sena.scrum.repository.UserStoryRepository;
+import com.sena.scrum.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,6 +28,9 @@ public class TaskService {
     private final UserStoryService userStoryService;
     private final UserStoryRepository userStoryRepository;
     private final UserRepository userRepository;
+    private final ImpedimentRepository impedimentRepository;
+    private final TaskCommentRepository commentRepository;
+    private final ProjectMembershipRepository membershipRepository;
 
     @Transactional(readOnly = true)
     public List<TaskResponse> getTasksBySprint(Long sprintId) {
@@ -46,6 +51,27 @@ public class TaskService {
     public TaskResponse getTaskById(Long id) {
         Task task = findEntityById(id);
         return mapToResponse(task);
+    }
+
+    @Transactional(readOnly = true)
+    public List<TaskResponse> getMyTasks(User user, String scope) {
+        if ("all".equalsIgnoreCase(scope)) {
+            if ("ADMIN".equals(user.getGlobalRole())) {
+                return taskRepository.findAll().stream().map(this::mapToResponse).collect(Collectors.toList());
+            }
+            Set<Long> userProjectIds = membershipRepository.findByUserId(user.getId()).stream()
+                    .map(m -> m.getProject().getId())
+                    .collect(Collectors.toSet());
+            return taskRepository.findAll().stream()
+                    .filter(t -> userProjectIds.contains(t.getUserStory().getProject().getId()))
+                    .map(this::mapToResponse)
+                    .collect(Collectors.toList());
+        }
+
+        // Default: scope === 'me'
+        return taskRepository.findByAssignedToId(user.getId()).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 
     @Transactional
@@ -80,6 +106,10 @@ public class TaskService {
     public TaskResponse updateTask(Long id, TaskRequest request) {
         Task task = findEntityById(id);
 
+        if (request.getStatus() == TaskStatus.DONE && task.getStatus() != TaskStatus.DONE) {
+            validateNoOpenImpediments(task.getId());
+        }
+
         if (request.getUserStoryId() != null && !request.getUserStoryId().equals(task.getUserStory().getId())) {
             UserStory newStory = userStoryService.findEntityById(request.getUserStoryId());
             task.setUserStory(newStory);
@@ -96,7 +126,9 @@ public class TaskService {
         if (request.getCode() != null && !request.getCode().isBlank()) {
             task.setCode(request.getCode().toUpperCase().trim());
         }
-        task.setDescription(request.getDescription().trim());
+        if (request.getDescription() != null) {
+            task.setDescription(request.getDescription().trim());
+        }
         if (request.getStatus() != null) {
             task.setStatus(request.getStatus());
         }
@@ -109,6 +141,11 @@ public class TaskService {
     @Transactional
     public TaskResponse updateKanbanStatus(Long id, TaskStatus status) {
         Task task = findEntityById(id);
+
+        if (status == TaskStatus.DONE && task.getStatus() != TaskStatus.DONE) {
+            validateNoOpenImpediments(task.getId());
+        }
+
         task.setStatus(status);
         Task updated = taskRepository.save(task);
 
@@ -116,6 +153,14 @@ public class TaskService {
         syncStoryCompletion(task.getUserStory().getId());
 
         return mapToResponse(updated);
+    }
+
+    private void validateNoOpenImpediments(Long taskId) {
+        boolean hasOpenImpediments = !impedimentRepository.findByTaskIdAndStatus(taskId, ImpedimentStatus.OPEN).isEmpty();
+        if (hasOpenImpediments) {
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "No se puede mover a Hecho una tarea con impedimentos abiertos (RF5 / HU #9)");
+        }
     }
 
     @Transactional
@@ -152,6 +197,9 @@ public class TaskService {
         Sprint sprint = story.getSprint();
         User assignee = task.getAssignedTo();
 
+        boolean hasActiveImpediment = !impedimentRepository.findByTaskIdAndStatus(task.getId(), ImpedimentStatus.OPEN).isEmpty();
+        int commentsCount = commentRepository.findByTaskIdOrderByCreatedAtAsc(task.getId()).size();
+
         return TaskResponse.builder()
                 .id(task.getId())
                 .userStoryId(story.getId())
@@ -165,6 +213,8 @@ public class TaskService {
                 .code(task.getCode())
                 .description(task.getDescription())
                 .status(task.getStatus())
+                .hasActiveImpediment(hasActiveImpediment)
+                .commentsCount(commentsCount)
                 .createdAt(task.getCreatedAt())
                 .build();
     }

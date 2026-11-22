@@ -24,5 +24,7 @@ public class TaskResponse {
     private String code;
     private String description;
     private TaskStatus status;
+    private Boolean hasActiveImpediment;
+    private Integer commentsCount;
     private OffsetDateTime createdAt;
 }

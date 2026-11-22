@@ -17,9 +17,11 @@ import { StoryModal } from './components/StoryModal';
 import { CommandPalette } from './components/CommandPalette';
 import { OnboardingModal } from './components/OnboardingModal';
 import { ThemeModal } from './components/ThemeModal';
+import { AuditLogModal } from './components/AuditLogModal';
 import { Button } from './components/ui';
 import type {
   AppNotification,
+  Epic,
   ProjectSummary,
   Sprint,
   SprintMetricRow,
@@ -64,6 +66,7 @@ function WorkspaceApp() {
   const [stories, setStories] = useState<UserStory[]>([]);
   const [tasks, setTasks] = useState<TaskItem[]>([]);
   const [metrics, setMetrics] = useState<SprintMetricRow[]>([]);
+  const [epics, setEpics] = useState<Epic[]>([]);
 
   // Story Modal & Command Palette
   const [storyModalOpen, setStoryModalOpen] = useState(false);
@@ -73,6 +76,7 @@ function WorkspaceApp() {
   // Onboarding & Theme Modals
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [themeModalOpen, setThemeModalOpen] = useState(false);
+  const [auditModalOpen, setAuditModalOpen] = useState(false);
 
   // Auto-launch onboarding on first login if not completed
   useEffect(() => {
@@ -162,6 +166,7 @@ function WorkspaceApp() {
             stories: UserStory[];
             tasks: TaskItem[];
             metrics: SprintMetricRow[];
+            epics: Epic[];
           }>(`/api/v1/projects/${projectId}/workspace`),
           apiFetch<{ notifications: AppNotification[] }>('/api/v1/notifications'),
         ]);
@@ -169,6 +174,7 @@ function WorkspaceApp() {
         setStories(wsRes.stories);
         setTasks(wsRes.tasks);
         setMetrics(wsRes.metrics);
+        setEpics(wsRes.epics || []);
         setNotifications(notifRes.notifications);
         setProjects((prev) => {
           const idx = prev.findIndex((p) => p.id === wsRes.project.id);
@@ -285,6 +291,7 @@ function WorkspaceApp() {
         onOpenCommandPalette={() => setCommandOpen(true)}
         onOpenOnboarding={() => setOnboardingOpen(true)}
         onOpenThemeModal={() => setThemeModalOpen(true)}
+        onOpenAuditModal={() => setAuditModalOpen(true)}
         primaryAction={primaryHeaderAction}
       >
         <AnimatePresence mode="wait">
@@ -320,6 +327,7 @@ function WorkspaceApp() {
                 sprints={sprints}
                 stories={stories}
                 tasks={tasks}
+                epics={epics}
                 loading={workspaceLoading}
                 onNewStory={() => {
                   setEditingStory(null);
@@ -368,6 +376,7 @@ function WorkspaceApp() {
         <StoryModal
           open={storyModalOpen}
           projectId={currentProject.id}
+          epics={epics}
           canUseAi={canUseAi}
           editingStory={editingStory}
           onClose={() => setStoryModalOpen(false)}
@@ -400,6 +409,11 @@ function WorkspaceApp() {
       <ThemeModal
         open={themeModalOpen}
         onClose={() => setThemeModalOpen(false)}
+      />
+
+      <AuditLogModal
+        open={auditModalOpen}
+        onClose={() => setAuditModalOpen(false)}
       />
     </>
   );

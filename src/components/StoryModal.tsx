@@ -5,11 +5,12 @@ import { apiFetch } from '../lib/api';
 import { useToast } from '../context/ToastContext';
 import { ConfirmDialog } from './UIHelpers';
 import { Modal, Input, Textarea, Button, Badge } from './ui';
-import type { AiGeneratedStory, StoryPriority, UserStory } from '../types/scrum';
+import type { AiGeneratedStory, Epic, StoryPriority, UserStory } from '../types/scrum';
 
 interface StoryModalProps {
   open: boolean;
   projectId: number;
+  epics?: Epic[];
   canUseAi: boolean;
   editingStory: UserStory | null;
   onClose: () => void;
@@ -19,6 +20,7 @@ interface StoryModalProps {
 export function StoryModal({
   open,
   projectId,
+  epics = [],
   canUseAi,
   editingStory,
   onClose,
@@ -33,6 +35,7 @@ export function StoryModal({
   const [newCriterionText, setNewCriterionText] = useState('');
   const [priority, setPriority] = useState<StoryPriority>('MEDIUM');
   const [storyPoints, setStoryPoints] = useState<string>('3');
+  const [epicId, setEpicId] = useState<number | null>(null);
 
   const [aiGenerating, setAiGenerating] = useState(false);
   const [aiHighlighted, setAiHighlighted] = useState(false);
@@ -54,12 +57,14 @@ export function StoryModal({
       );
       setPriority(editingStory.priority);
       setStoryPoints(String(editingStory.storyPoints));
+      setEpicId(editingStory.epicId ?? null);
     } else {
       setTitle('');
       setDescription('');
       setCriteria(['']);
       setPriority('MEDIUM');
       setStoryPoints('3');
+      setEpicId(null);
     }
   }, [open, editingStory]);
 
@@ -71,7 +76,8 @@ export function StoryModal({
         description.trim() !== '' ||
         criteria.some((c) => c.trim() !== '') ||
         storyPoints !== '3' ||
-        priority !== 'MEDIUM'
+        priority !== 'MEDIUM' ||
+        epicId !== null
       );
     }
     const origCriteria = editingStory.acceptanceCriteria.join('\n');
@@ -81,9 +87,10 @@ export function StoryModal({
       description.trim() !== editingStory.description ||
       currCriteria !== origCriteria ||
       priority !== editingStory.priority ||
-      Number(storyPoints) !== editingStory.storyPoints
+      Number(storyPoints) !== editingStory.storyPoints ||
+      epicId !== (editingStory.epicId ?? null)
     );
-  }, [open, editingStory, title, description, criteria, priority, storyPoints]);
+  }, [open, editingStory, title, description, criteria, priority, storyPoints, epicId]);
 
   const attemptClose = () => {
     if (aiGenerating || saving) return;
@@ -161,6 +168,7 @@ export function StoryModal({
         acceptanceCriteria: criteria.map((c) => c.trim()).filter(Boolean),
         priority,
         storyPoints: parsedPoints,
+        epicId: epicId || null,
       };
       if (editingStory) {
         await apiFetch(`/api/v1/stories/${editingStory.id}`, {
@@ -321,8 +329,30 @@ export function StoryModal({
             </div>
           </div>
 
-          {/* Section 4: Priority & Story Points */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1">
+          {/* Section 4: Epics, Priority & Story Points */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+            {/* Epic Selector (RF3, HU #4) */}
+            <div>
+              <label htmlFor="story-epic-select" className="block text-[12px] font-medium text-mist mb-1.5">
+                Épica Scrum
+              </label>
+              <select
+                id="story-epic-select"
+                value={epicId ?? ''}
+                onChange={(e) => setEpicId(e.target.value ? Number(e.target.value) : null)}
+                className="w-full px-2.5 py-1.5 bg-carbon border border-graphite rounded-inputs text-[12px] text-bone focus:outline-none focus:border-iris-violet shadow-subtle cursor-pointer h-[38px]"
+              >
+                <option value="" className="bg-carbon text-fog">
+                  Sin Épica
+                </option>
+                {epics.map((ep) => (
+                  <option key={ep.id} value={ep.id} className="bg-carbon text-bone">
+                    {ep.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
             {/* Priority Selector */}
             <div>
               <label className="block text-[12px] font-medium text-mist mb-1.5">

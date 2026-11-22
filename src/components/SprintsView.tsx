@@ -23,6 +23,7 @@ import {
   Button,
   Input,
   Textarea,
+  Select,
   Modal,
   Badge,
   EmptyState,
@@ -92,6 +93,8 @@ export function SprintsView({
   // Close Sprint confirmation + result summary
   const [closeModalSprint, setCloseModalSprint] = useState<Sprint | null>(null);
   const [closing, setClosing] = useState(false);
+  const [incompleteDestination, setIncompleteDestination] = useState<'BACKLOG' | 'NEXT_SPRINT'>('BACKLOG');
+  const [targetSprintId, setTargetSprintId] = useState<string>('');
   const [closeSummary, setCloseSummary] = useState<SprintCloseSummary | null>(null);
 
   const backlogStories = useMemo(
@@ -171,7 +174,16 @@ export function SprintsView({
     try {
       const res = await apiFetch<{ summary: SprintCloseSummary }>(
         `/api/v1/sprints/${closeModalSprint.id}/close`,
-        { method: 'POST' }
+        {
+          method: 'POST',
+          body: JSON.stringify({
+            destination: incompleteDestination,
+            targetSprintId:
+              incompleteDestination === 'NEXT_SPRINT' && targetSprintId
+                ? Number(targetSprintId)
+                : null,
+          }),
+        }
       );
       showToast('Sprint finalizado correctamente', 'success');
       setCloseModalSprint(null);
@@ -267,9 +279,16 @@ export function SprintsView({
                 </span>
                 <span>·</span>
                 <span>
-                  Story Points entregados:{' '}
+                  Velocidad real consolidada:{' '}
                   <strong className="font-mono text-pulse-green">
-                    {closeSummary.deliveredPoints} / {closeSummary.plannedPoints} pts
+                    {closeSummary.velocity ?? closeSummary.deliveredPoints} pts
+                  </strong>
+                </span>
+                <span>·</span>
+                <span>
+                  Destino historias restantes:{' '}
+                  <strong className="font-mono text-signal-teal">
+                    {closeSummary.targetDestination || 'Product Backlog'}
                   </strong>
                 </span>
               </div>
@@ -509,15 +528,17 @@ export function SprintsView({
                               >
                                 Tablero Kanban
                               </Button>
-                              <Button
-                                variant="primary"
-                                size="xs"
-                                onClick={() => setCloseModalSprint(sprint)}
-                                icon={<CheckSquare className="w-3.5 h-3.5" />}
-                                className="bg-pulse-green hover:bg-pulse-green/90 text-void font-semibold"
-                              >
-                                Finalizar Sprint
-                              </Button>
+                              {project.myRole === 'SCRUM_MASTER' && (
+                                <Button
+                                  variant="primary"
+                                  size="xs"
+                                  onClick={() => setCloseModalSprint(sprint)}
+                                  icon={<CheckSquare className="w-3.5 h-3.5" />}
+                                  className="bg-pulse-green hover:bg-pulse-green/90 text-void font-semibold"
+                                >
+                                  Finalizar Sprint
+                                </Button>
+                              )}
                             </>
                           )}
                         </div>
@@ -698,20 +719,77 @@ export function SprintsView({
             </div>
 
             {closeModalStats.incomplete.length > 0 ? (
-              <div className="p-3.5 rounded-inputs bg-amber-400/10 border border-amber-400/30 space-y-2">
+              <div className="p-3.5 rounded-inputs bg-amber-400/10 border border-amber-400/30 space-y-3">
                 <div className="flex items-start gap-2 text-[13px] text-amber-300">
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-amber-400" />
                   <p>
-                    Este Sprint tiene historias de usuario incompletas. De acuerdo con Scrum, estas historias regresarán automáticamente al Product Backlog para ser repriorizadas.
+                    Este Sprint tiene historias de usuario incompletas. Según Scrum y RF6, solo las historias 100% completadas computan para la velocidad real.
                   </p>
                 </div>
-                <ul className="pl-6 list-disc text-[12px] text-mist space-y-0.5">
+                <ul className="pl-6 list-disc text-[12px] text-mist space-y-0.5 max-h-24 overflow-y-auto">
                   {closeModalStats.incomplete.map((st) => (
                     <li key={st.id}>
-                      <span className="font-mono text-signal-teal">{st.code}</span> · {st.title}
+                      <span className="font-mono text-signal-teal">{st.code}</span> · {st.title} ({st.storyPoints || 0} pts)
                     </li>
                   ))}
                 </ul>
+
+                <div className="pt-2 border-t border-amber-400/20 space-y-2">
+                  <label className="block text-[12px] font-semibold text-bone">
+                    Destino para historias no completadas (RF6):
+                  </label>
+                  <div className="space-y-1.5">
+                    <label className="flex items-center gap-2 text-[12px] text-mist cursor-pointer">
+                      <input
+                        type="radio"
+                        name="incompleteDestination"
+                        value="BACKLOG"
+                        checked={incompleteDestination === 'BACKLOG'}
+                        onChange={() => setIncompleteDestination('BACKLOG')}
+                        className="accent-iris-violet"
+                      />
+                      <span>Regresar al Product Backlog (Predeterminado)</span>
+                    </label>
+
+                    {sprints.filter((s) => s.status === 'PLANNING' && s.id !== closeModalSprint.id).length > 0 && (
+                      <label className="flex items-center gap-2 text-[12px] text-mist cursor-pointer">
+                        <input
+                          type="radio"
+                          name="incompleteDestination"
+                          value="NEXT_SPRINT"
+                          checked={incompleteDestination === 'NEXT_SPRINT'}
+                          onChange={() => {
+                            setIncompleteDestination('NEXT_SPRINT');
+                            const firstPlanning = sprints.find(
+                              (s) => s.status === 'PLANNING' && s.id !== closeModalSprint.id
+                            );
+                            if (firstPlanning) setTargetSprintId(String(firstPlanning.id));
+                          }}
+                          className="accent-iris-violet"
+                        />
+                        <span>Transferir al siguiente Sprint planificado</span>
+                      </label>
+                    )}
+                  </div>
+
+                  {incompleteDestination === 'NEXT_SPRINT' && (
+                    <div className="pt-1">
+                      <Select
+                        label="Seleccionar Sprint destino"
+                        value={targetSprintId}
+                        onChange={(e: React.ChangeEvent<HTMLSelectElement>) => setTargetSprintId(e.target.value)}
+                      >
+                        {sprints
+                          .filter((s) => s.status === 'PLANNING' && s.id !== closeModalSprint.id)
+                          .map((sp) => (
+                            <option key={sp.id} value={sp.id}>
+                              {sp.name} ({sp.startDate} → {sp.endDate})
+                            </option>
+                          ))}
+                      </Select>
+                    </div>
+                  )}
+                </div>
               </div>
             ) : (
               <div className="p-3.5 rounded-inputs bg-pulse-green/10 border border-pulse-green/30 text-[13px] text-pulse-green flex items-center gap-2">

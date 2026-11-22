@@ -18,6 +18,9 @@ public class UserStoryResponse {
     private String projectName;
     private Long sprintId;
     private String sprintName;
+    private Long epicId;
+    private String epicName;
+    private String epicColorHex;
     private String code;
     private String title;
     private String description;

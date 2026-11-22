@@ -60,13 +60,13 @@ interface AuthRequest extends Request {
 
 const aiClient = process.env.GEMINI_API_KEY
   ? new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build',
-        },
+    apiKey: process.env.GEMINI_API_KEY,
+    httpOptions: {
+      headers: {
+        'User-Agent': 'aistudio-build',
       },
-    })
+    },
+  })
   : null;
 
 function authenticateToken(req: AuthRequest, res: Response, next: NextFunction) {
@@ -96,6 +96,11 @@ function getEffectiveRole(user: StoredUser, projectId: number): ScrumRole | 'ADM
   if (user.globalRole === 'ADMIN') return 'ADMIN';
   const membership = store.getMembership(user.id, projectId);
   return membership ? membership.scrumRole : null;
+  return store.getEffectiveRole(user, projectId);
+}
+
+function getProjectRole(user: StoredUser, projectId: number): ScrumRole | null {
+  return store.getProjectRole(user, projectId);
 }
 
 function requireProjectAccess(allowedRoles?: Array<ScrumRole | 'ADMIN'>) {
@@ -184,6 +189,17 @@ async function startServer() {
 
     // Reset rate limiter on successful authentication
     loginAttempts.delete(clientIp);
+
+    // Audit log (RNF-06)
+    store.logAuditEvent({
+      userId: user.id,
+      userName: user.fullName,
+      userEmail: user.email,
+      action: 'USER_LOGIN',
+      entityType: 'USER',
+      entityId: user.id,
+      details: `Inicio de sesión exitoso desde IP: ${clientIp}`,
+    });
 
     const token = jwt.sign({ userId: user.id, role: user.globalRole }, JWT_SECRET, {
       expiresIn: '24h',
@@ -350,6 +366,7 @@ async function startServer() {
         stories: store.getStoriesByProject(projectId),
         tasks: store.getTasksByProject(projectId),
         metrics: store.getProjectMetrics(projectId),
+        epics: store.getEpicsByProject(projectId),
       });
     }
   );
@@ -398,7 +415,7 @@ async function startServer() {
     requireProjectAccess(['ADMIN', 'PRODUCT_OWNER']),
     (req: AuthRequest, res) => {
       const projectId = Number(req.params.projectId);
-      const { title, description, acceptanceCriteria, priority, storyPoints } = req.body ?? {};
+      const { title, description, acceptanceCriteria, priority, storyPoints, epicId } = req.body ?? {};
 
       if (!title || !String(title).trim()) {
         res.status(400).json({ error: 'El título es obligatorio' });
@@ -415,6 +432,8 @@ async function startServer() {
       }
 
       try {
+        const parsedEpicId =
+          epicId !== undefined && epicId !== null && epicId !== '' ? Number(epicId) : null;
         const story = store.createStory(projectId, {
           title: String(title),
           description: String(description || ''),
@@ -423,6 +442,7 @@ async function startServer() {
             : [],
           priority: priority as StoryPriority,
           storyPoints: pts,
+          epicId: parsedEpicId,
         });
         res.status(201).json({ story });
       } catch (err: any) {
@@ -443,13 +463,14 @@ async function startServer() {
       res.status(403).json({ error: 'Sin acceso al proyecto' });
       return;
     }
-    const { title, description, acceptanceCriteria, priority, storyPoints } = req.body ?? {};
+    const { title, description, acceptanceCriteria, priority, storyPoints, epicId } = req.body ?? {};
     const isOnlyPointsUpdate =
       storyPoints !== undefined &&
       title === undefined &&
       description === undefined &&
       acceptanceCriteria === undefined &&
-      priority === undefined;
+      priority === undefined &&
+      epicId === undefined;
 
     if (!isOnlyPointsUpdate && role !== 'ADMIN' && role !== 'PRODUCT_OWNER') {
       res.status(403).json({ error: 'Solo Product Owner o Admin pueden editar detalles de historias' });
@@ -457,6 +478,12 @@ async function startServer() {
     }
 
     try {
+      const parsedEpicId =
+        epicId !== undefined
+          ? epicId === null || epicId === ''
+            ? null
+            : Number(epicId)
+          : undefined;
       const updated = store.updateStory(storyId, {
         ...(title !== undefined ? { title: String(title) } : {}),
         ...(description !== undefined ? { description: String(description) } : {}),
@@ -465,6 +492,7 @@ async function startServer() {
           : {}),
         ...(priority !== undefined ? { priority } : {}),
         ...(storyPoints !== undefined ? { storyPoints: Number(storyPoints) } : {}),
+        ...(parsedEpicId !== undefined ? { epicId: parsedEpicId } : {}),
       });
       res.json({ story: updated });
     } catch (err: any) {
@@ -564,13 +592,20 @@ async function startServer() {
       res.status(404).json({ error: 'Sprint no encontrado' });
       return;
     }
-    const role = getEffectiveRole(req.user!, sprint.projectId);
-    if (!role || (role !== 'ADMIN' && role !== 'SCRUM_MASTER' && role !== 'PRODUCT_OWNER')) {
-      res.status(403).json({ error: 'Solo Scrum Master o Admin pueden cerrar Sprints' });
+    // RF6 / HU #10: Restringido estrictamente al Scrum Master del proyecto
+    if (!store.canCloseSprint(req.user!, sprint.projectId)) {
+      res.status(403).json({
+        error: 'Solo el Scrum Master asignado al proyecto puede cerrar Sprints (RF6 / HU #10)',
+      });
       return;
     }
+    const { destination, targetSprintId } = req.body ?? {};
     try {
-      const summary = store.closeSprint(sprint.id);
+      const summary = store.closeSprint(sprint.id, {
+        destination,
+        targetSprintId: targetSprintId ? Number(targetSprintId) : null,
+        actor: { id: req.user!.id, fullName: req.user!.fullName, email: req.user!.email },
+      });
       res.json({ summary });
     } catch (err: any) {
       res.status(err.status || 409).json({ error: err.message });
@@ -718,6 +753,301 @@ async function startServer() {
     } catch (err: any) {
       res.status(err.status || 400).json({ error: err.message });
     }
+  });
+
+  // --- EPICS (RF3, HU #4) ---
+  app.get(
+    '/api/v1/projects/:projectId/epics',
+    authenticateToken,
+    requireProjectAccess(['ADMIN', 'PRODUCT_OWNER', 'SCRUM_MASTER', 'DEVELOPER']),
+    (req: AuthRequest, res) => {
+      const projectId = Number(req.params.projectId);
+      res.json({ epics: store.getEpicsByProject(projectId) });
+    }
+  );
+
+  app.post(
+    '/api/v1/projects/:projectId/epics',
+    authenticateToken,
+    requireProjectAccess(['ADMIN', 'PRODUCT_OWNER', 'SCRUM_MASTER']),
+    (req: AuthRequest, res) => {
+      const projectId = Number(req.params.projectId);
+      const { name, description, colorHex } = req.body ?? {};
+
+      if (!name || typeof name !== 'string' || name.trim().length < 3) {
+        res.status(400).json({ error: 'El nombre de la Épica debe tener al menos 3 caracteres' });
+        return;
+      }
+      if (name.trim().length > 100) {
+        res.status(400).json({ error: 'El nombre de la Épica no puede exceder 100 caracteres' });
+        return;
+      }
+      if (colorHex && !/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(colorHex.trim())) {
+        res.status(400).json({ error: 'El color debe tener un formato hexadecimal válido (ej: #8B5CF6)' });
+        return;
+      }
+
+      try {
+        const epic = store.createEpic(projectId, {
+          name: name.trim(),
+          description: typeof description === 'string' ? description.trim() : '',
+          colorHex: colorHex ? colorHex.trim() : '#8B5CF6',
+        });
+        res.status(201).json({ epic });
+      } catch (err: any) {
+        res.status(err.status || 400).json({ error: err.message });
+      }
+    }
+  );
+
+  app.patch('/api/v1/epics/:epicId', authenticateToken, (req: AuthRequest, res) => {
+    const epicId = Number(req.params.epicId);
+    if (!epicId || Number.isNaN(epicId)) {
+      res.status(400).json({ error: 'ID de Épica inválido' });
+      return;
+    }
+    const existingEpic = store.getEpicById(epicId);
+    if (!existingEpic) {
+      res.status(404).json({ error: 'Épica no encontrada' });
+      return;
+    }
+    const role = getEffectiveRole(req.user!, existingEpic.projectId);
+    if (!role || (role !== 'ADMIN' && role !== 'PRODUCT_OWNER' && role !== 'SCRUM_MASTER')) {
+      res.status(403).json({ error: 'No tienes permisos para modificar Épicas en este proyecto' });
+      return;
+    }
+
+    const { name, description, colorHex } = req.body ?? {};
+    if (name !== undefined && (typeof name !== 'string' || name.trim().length < 3)) {
+      res.status(400).json({ error: 'El nombre de la Épica debe tener al menos 3 caracteres' });
+      return;
+    }
+    if (colorHex !== undefined && !/^#([0-9A-Fa-f]{3}|[0-9A-Fa-f]{6})$/.test(String(colorHex).trim())) {
+      res.status(400).json({ error: 'El color debe tener un formato hexadecimal válido (ej: #8B5CF6)' });
+      return;
+    }
+
+    try {
+      const updated = store.updateEpic(epicId, {
+        ...(name !== undefined ? { name: name.trim() } : {}),
+        ...(description !== undefined ? { description: String(description).trim() } : {}),
+        ...(colorHex !== undefined ? { colorHex: String(colorHex).trim() } : {}),
+      });
+      res.json({ epic: updated });
+    } catch (err: any) {
+      res.status(err.status || 400).json({ error: err.message });
+    }
+  });
+
+  app.delete('/api/v1/epics/:epicId', authenticateToken, (req: AuthRequest, res) => {
+    const epicId = Number(req.params.epicId);
+    if (!epicId || Number.isNaN(epicId)) {
+      res.status(400).json({ error: 'ID de Épica inválido' });
+      return;
+    }
+    const existingEpic = store.getEpicById(epicId);
+    if (!existingEpic) {
+      res.status(404).json({ error: 'Épica no encontrada' });
+      return;
+    }
+    const role = getEffectiveRole(req.user!, existingEpic.projectId);
+    if (!role || (role !== 'ADMIN' && role !== 'PRODUCT_OWNER' && role !== 'SCRUM_MASTER')) {
+      res.status(403).json({ error: 'No tienes permisos para eliminar Épicas en este proyecto' });
+      return;
+    }
+
+    try {
+      store.deleteEpic(epicId);
+      res.json({ ok: true });
+    } catch (err: any) {
+      res.status(err.status || 400).json({ error: err.message });
+    }
+  });
+
+  // --- IMPEDIMENTS (RF5, RF6, HU #9) ---
+  app.get('/api/v1/tasks/:taskId/impediments', authenticateToken, (req: AuthRequest, res) => {
+    const taskId = Number(req.params.taskId);
+    const task = store.getTaskById(taskId);
+    if (!task) {
+      res.status(404).json({ error: 'Tarea no encontrada' });
+      return;
+    }
+    const story = store.getStoryById(task.userStoryId);
+    if (!story) {
+      res.status(404).json({ error: 'Historia asociada no encontrada' });
+      return;
+    }
+    const role = getEffectiveRole(req.user!, story.projectId);
+    if (!role) {
+      res.status(403).json({ error: 'No tienes acceso a este proyecto' });
+      return;
+    }
+
+    res.json({ impediments: store.getImpedimentsByTask(taskId) });
+  });
+
+  app.post('/api/v1/tasks/:taskId/impediments', authenticateToken, (req: AuthRequest, res) => {
+    const taskId = Number(req.params.taskId);
+    const task = store.getTaskById(taskId);
+    if (!task) {
+      res.status(404).json({ error: 'Tarea no encontrada' });
+      return;
+    }
+    const story = store.getStoryById(task.userStoryId);
+    if (!story) {
+      res.status(404).json({ error: 'Historia asociada no encontrada' });
+      return;
+    }
+    // Autorización estricta: Solo Developer y Scrum Master del proyecto pueden registrar impedimentos (RF5 / HU #9)
+    if (!store.canReportImpediment(req.user!, story.projectId)) {
+      res.status(403).json({
+        error: 'Solo los roles Developer y Scrum Master del proyecto pueden registrar impedimentos (RF5 / HU #9)',
+      });
+      return;
+    }
+
+    const { description } = req.body ?? {};
+    if (!description || typeof description !== 'string' || description.trim().length < 5) {
+      res.status(400).json({ error: 'La descripción del impedimento debe tener al menos 5 caracteres' });
+      return;
+    }
+    if (description.trim().length > 500) {
+      res.status(400).json({ error: 'La descripción del impedimento no puede exceder 500 caracteres' });
+      return;
+    }
+
+    try {
+      const impediment = store.createImpediment(taskId, req.user!, { description: description.trim() });
+      const updatedTask = store.getTaskById(taskId);
+      res.status(201).json({ impediment, task: updatedTask });
+    } catch (err: any) {
+      res.status(err.status || 400).json({ error: err.message });
+    }
+  });
+
+  app.patch('/api/v1/impediments/:impedimentId/resolve', authenticateToken, (req: AuthRequest, res) => {
+    const impedimentId = Number(req.params.impedimentId);
+    const impediment = store.getImpedimentById(impedimentId);
+    if (!impediment) {
+      res.status(404).json({ error: 'Impedimento no encontrado' });
+      return;
+    }
+    const task = store.getTaskById(impediment.taskId);
+    if (!task) {
+      res.status(404).json({ error: 'Tarea asociada no encontrada' });
+      return;
+    }
+    const story = store.getStoryById(task.userStoryId);
+    if (!story) {
+      res.status(404).json({ error: 'Historia asociada no encontrada' });
+      return;
+    }
+
+    // Autorización estricta: La resolución de impedimentos corresponde exclusivamente al Scrum Master (RF6 / HU #9)
+    if (!store.canResolveImpediment(req.user!, story.projectId)) {
+      res.status(403).json({
+        error: 'Solo el Scrum Master asignado al proyecto puede resolver impedimentos (RF6 / HU #9)',
+      });
+      return;
+    }
+
+    const { resolutionComment } = req.body ?? {};
+    if (!resolutionComment || typeof resolutionComment !== 'string' || resolutionComment.trim().length < 3) {
+      res.status(400).json({ error: 'El comentario de resolución debe tener al menos 3 caracteres' });
+      return;
+    }
+    if (resolutionComment.trim().length > 500) {
+      res.status(400).json({ error: 'El comentario de resolución no puede exceder 500 caracteres' });
+      return;
+    }
+
+    try {
+      const resolved = store.resolveImpediment(impedimentId, req.user!, {
+        resolutionComment: resolutionComment.trim(),
+      });
+      const updatedTask = store.getTaskById(task.id);
+      res.json({ impediment: resolved, task: updatedTask });
+    } catch (err: any) {
+      res.status(err.status || 400).json({ error: err.message });
+    }
+  });
+
+  // --- TASK COMMENTS (HU #12, RF6) ---
+  app.get('/api/v1/tasks/:taskId/comments', authenticateToken, (req: AuthRequest, res) => {
+    const taskId = Number(req.params.taskId);
+    const task = store.getTaskById(taskId);
+    if (!task) {
+      res.status(404).json({ error: 'Tarea no encontrada' });
+      return;
+    }
+    const story = store.getStoryById(task.userStoryId);
+    if (!story) {
+      res.status(404).json({ error: 'Historia asociada no encontrada' });
+      return;
+    }
+    // Lectura autorizada: Todos los usuarios con acceso autorizado al proyecto (Developer, SM, PO, Admin)
+    const role = getEffectiveRole(req.user!, story.projectId);
+    if (!role) {
+      res.status(403).json({ error: 'No tienes acceso a este proyecto' });
+      return;
+    }
+    res.json({ comments: store.getCommentsByTask(taskId) });
+  });
+
+  app.post('/api/v1/tasks/:taskId/comments', authenticateToken, (req: AuthRequest, res) => {
+    const taskId = Number(req.params.taskId);
+    const task = store.getTaskById(taskId);
+    if (!task) {
+      res.status(404).json({ error: 'Tarea no encontrada' });
+      return;
+    }
+    const story = store.getStoryById(task.userStoryId);
+    if (!story) {
+      res.status(404).json({ error: 'Historia asociada no encontrada' });
+      return;
+    }
+
+    // Autorización estricta: Publicación restringida a Developer y Scrum Master del proyecto (HU #12)
+    if (!store.canPostComment(req.user!, story.projectId)) {
+      res.status(403).json({
+        error: 'Solo los roles Developer y Scrum Master del proyecto pueden publicar comentarios (HU #12)',
+      });
+      return;
+    }
+
+    const { content } = req.body ?? {};
+    if (!content || typeof content !== 'string' || !content.trim()) {
+      res.status(400).json({ error: 'El contenido del comentario no puede estar vacío' });
+      return;
+    }
+    if (content.trim().length > 1000) {
+      res.status(400).json({ error: 'El comentario no puede exceder 1000 caracteres' });
+      return;
+    }
+
+    try {
+      const comment = store.createTaskComment(taskId, req.user!, content.trim());
+      const updatedTask = store.getTaskById(taskId);
+      res.status(201).json({ comment, task: updatedTask });
+    } catch (err: any) {
+      res.status(err.status || 400).json({ error: err.message });
+    }
+  });
+
+  // --- AUDIT LOGS (RNF-06, RF6) ---
+  app.get('/api/v1/audit-logs', authenticateToken, (req: AuthRequest, res) => {
+    // Consulta protegida de auditoría: Solo Administrador y Scrum Master (RNF-06)
+    if (!store.canViewAuditLogs(req.user!)) {
+      res.status(403).json({ error: 'Acceso restringido a Administradores y Scrum Masters' });
+      return;
+    }
+
+    const { action, limit } = req.query;
+    const logs = store.getAuditLogs({
+      action: action ? (String(action) as any) : undefined,
+      limit: limit ? Number(limit) : 100,
+    });
+    res.json({ auditLogs: logs });
   });
 
   // --- NOTIFICATIONS (RF-15) ---

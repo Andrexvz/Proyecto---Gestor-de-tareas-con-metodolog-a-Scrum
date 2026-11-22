@@ -17,6 +17,7 @@ import {
   ChevronRight,
   ExternalLink,
   User as UserIcon,
+  AlertOctagon,
 } from 'lucide-react';
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
 import { useAuth } from '../context/AuthContext';
@@ -75,6 +76,18 @@ export function MyWorkView({ onNavigate }: MyWorkViewProps) {
 
   // Handle task status update directly from My Work
   const handleUpdateStatus = async (taskId: number, newStatus: TaskStatus) => {
+    // Canonical Scrum Rule (RF5 / HU #9): Block transition to DONE if active impediments exist
+    if (newStatus === 'DONE') {
+      const taskObj = tasks.find((t) => t.id === taskId);
+      if (taskObj?.hasActiveImpediment) {
+        showToast(
+          'No se puede mover a Hecho una tarea con impedimentos abiertos. El Scrum Master debe resolver el impedimento primero (RF5 / HU #9).',
+          'error'
+        );
+        return;
+      }
+    }
+
     setUpdatingTaskId(taskId);
     try {
       await apiFetch(`/api/v1/tasks/${taskId}`, {
@@ -559,6 +572,11 @@ export function MyWorkView({ onNavigate }: MyWorkViewProps) {
                         <Badge variant="default" size="sm">
                           {task.project.code}
                         </Badge>
+                        {task.hasActiveImpediment && (
+                          <Badge variant="danger" size="sm" shape="pill" dot>
+                            Bloqueada
+                          </Badge>
+                        )}
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         {getPriorityBadge(task.story.priority)}
@@ -661,6 +679,15 @@ export function MyWorkView({ onNavigate }: MyWorkViewProps) {
                         <span className="font-mono text-[12px] font-semibold text-iris-violet shrink-0">
                           {task.code}
                         </span>
+                        {task.hasActiveImpediment && (
+                          <span
+                            className="inline-flex items-center gap-1 text-[10px] text-coral-red bg-coral-red/10 px-1.5 py-0.5 rounded border border-coral-red/30 shrink-0 font-medium"
+                            title="Tarea con impedimento activo"
+                          >
+                            <AlertOctagon className="w-2.5 h-2.5" />
+                            Bloqueada
+                          </span>
+                        )}
                         <span className="font-medium text-bone line-clamp-1">
                           {task.description}
                         </span>

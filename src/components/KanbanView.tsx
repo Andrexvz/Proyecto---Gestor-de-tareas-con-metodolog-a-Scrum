@@ -22,10 +22,14 @@ import {
   Pencil,
   ArrowRight,
   Sparkles,
+  AlertOctagon,
+  MessageSquare,
+  Send,
 } from 'lucide-react';
 import { apiFetch } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
+import { ImpedimentModal } from './ImpedimentModal';
 import { PrioritySignal, SprintStatusText, TaskColumnLabel, UserAvatar } from './UIHelpers';
 import {
   Button,
@@ -41,6 +45,7 @@ import type {
   ProjectSummary,
   Sprint,
   StoryPriority,
+  TaskComment,
   TaskItem,
   TaskStatus,
   User,
@@ -80,6 +85,7 @@ function DraggableTaskCard({
   onChangeStatus,
   onEditTask,
   onDeleteTask,
+  onManageImpediments,
   isOverlay = false,
 }: {
   task: TaskItem;
@@ -91,6 +97,7 @@ function DraggableTaskCard({
   onChangeStatus: (taskId: number, status: TaskStatus) => void;
   onEditTask?: (task: TaskItem) => void;
   onDeleteTask: (taskId: number) => void;
+  onManageImpediments?: (task: TaskItem) => void;
   isOverlay?: boolean;
 }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
@@ -114,6 +121,8 @@ function DraggableTaskCard({
           ? 'border-iris-violet bg-obsidian shadow-2xl rotate-2 scale-[1.02] opacity-95 ring-1 ring-iris-violet/40 z-50'
           : isDragging
           ? 'opacity-30 border-dashed border-smoke'
+          : task.hasActiveImpediment
+          ? 'border-coral-red/70 bg-coral-red/[0.04] hover:border-coral-red hover:shadow-md'
           : 'border-graphite hover:border-iris-violet/40 hover:shadow-md'
       }`}
     >
@@ -133,13 +142,22 @@ function DraggableTaskCard({
           <span className="font-mono text-[11px] font-semibold text-signal-teal bg-signal-teal/10 px-1 py-0.5 rounded">
             {task.code}
           </span>
+          {task.hasActiveImpediment && (
+            <span
+              className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-coral-red/15 text-coral-red border border-coral-red/30 animate-pulse"
+              title="Tarea bloqueada por impedimento activo (RF5 / HU #9)"
+            >
+              <AlertOctagon className="w-3 h-3" />
+              Bloqueada
+            </span>
+          )}
           {story && (
             <>
               <span className="text-ash" aria-hidden="true">
                 ·
               </span>
               <span
-                className="font-mono text-[11px] text-fog truncate max-w-[120px]"
+                className="font-mono text-[11px] text-fog truncate max-w-[100px]"
                 title={story.title}
               >
                 {story.code}
@@ -152,6 +170,25 @@ function DraggableTaskCard({
           {story && <PrioritySignal priority={story.priority} />}
           {!isOverlay && (
             <div className="flex items-center gap-0.5">
+              {onManageImpediments && (
+                <button
+                  type="button"
+                  onClick={() => onManageImpediments(task)}
+                  className={`p-1 rounded-inputs transition-colors ${
+                    task.hasActiveImpediment
+                      ? 'text-coral-red hover:bg-coral-red/20 bg-coral-red/10'
+                      : 'text-fog hover:text-signal-teal hover:bg-graphite'
+                  }`}
+                  title={
+                    task.hasActiveImpediment
+                      ? 'Gestionar impedimento activo'
+                      : 'Reportar impedimento / ver bloqueos'
+                  }
+                  aria-label="Gestionar impedimentos"
+                >
+                  <AlertOctagon className="w-3 h-3" />
+                </button>
+              )}
               {onEditTask && (
                 <button
                   type="button"
@@ -181,6 +218,24 @@ function DraggableTaskCard({
       <p className="text-[13px] text-bone leading-[19px] break-words">
         {task.description}
       </p>
+
+      {/* Indicators: Comments (HU #12) */}
+      {task.commentsCount && task.commentsCount > 0 ? (
+        <div className="flex items-center gap-2 pt-0.5">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEditTask?.(task);
+            }}
+            className="inline-flex items-center gap-1 text-[11px] font-mono text-fog hover:text-paper transition-colors"
+            title={`${task.commentsCount} comentarios de seguimiento (HU #12)`}
+          >
+            <MessageSquare className="w-3 h-3 text-iris-violet" />
+            <span>{task.commentsCount} {task.commentsCount === 1 ? 'comentario' : 'comentarios'}</span>
+          </button>
+        </div>
+      ) : null}
 
       {/* Bottom bar: Assignee & Accessible Status selector */}
       <div className="pt-2 border-t border-graphite/60 flex items-center justify-between gap-2">
@@ -287,6 +342,9 @@ export function KanbanView({
   const [priorityFilter, setPriorityFilter] = useState<'ALL' | StoryPriority>('ALL');
   const [onlyMyTasks, setOnlyMyTasks] = useState(false);
 
+  // Impediment modal state (RF5, HU #9)
+  const [impedimentTask, setImpedimentTask] = useState<TaskItem | null>(null);
+
   // Mobile stage tab
   const [mobileColumn, setMobileColumn] = useState<TaskStatus>('TODO');
 
@@ -304,6 +362,12 @@ export function KanbanView({
   const [editTaskStatus, setEditTaskStatus] = useState<TaskStatus>('TODO');
   const [editTaskError, setEditTaskError] = useState('');
   const [savingEditTask, setSavingEditTask] = useState(false);
+
+  // Task comments state (HU #12)
+  const [taskComments, setTaskComments] = useState<TaskComment[]>([]);
+  const [newCommentText, setNewCommentText] = useState('');
+  const [postingComment, setPostingComment] = useState(false);
+  const [loadingComments, setLoadingComments] = useState(false);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -367,6 +431,15 @@ export function KanbanView({
   const persistTaskStatus = async (taskId: number, newStatus: TaskStatus) => {
     const current = effectiveTasks.find((t) => t.id === taskId);
     if (!current || current.status === newStatus) return;
+
+    // Canonical Scrum Rule (RF5 / HU #9): Block transition to DONE if active impediments exist
+    if (newStatus === 'DONE' && current.hasActiveImpediment) {
+      showToast(
+        'No se puede mover a Hecho una tarea con impedimentos abiertos. El Scrum Master debe resolver el impedimento primero (RF5 / HU #9).',
+        'error'
+      );
+      return;
+    }
 
     const snapshot = [...effectiveTasks];
     // Optimistic state update (<16ms UI feedback)
@@ -437,12 +510,47 @@ export function KanbanView({
     }
   };
 
-  const handleOpenEditTask = (task: TaskItem) => {
+  const handleOpenEditTask = async (task: TaskItem) => {
     setEditingTask(task);
     setEditTaskDesc(task.description);
     setEditTaskAssigneeId(task.assignedToId ? String(task.assignedToId) : '');
     setEditTaskStatus(task.status);
     setEditTaskError('');
+    setNewCommentText('');
+    setTaskComments(task.comments || []);
+    try {
+      setLoadingComments(true);
+      const res = await apiFetch<{ comments: TaskComment[] }>(`/api/v1/tasks/${task.id}/comments`);
+      if (res?.comments) {
+        setTaskComments(res.comments);
+      }
+    } catch {
+      // Retener comentarios optimistas en memoria
+    } finally {
+      setLoadingComments(false);
+    }
+  };
+
+  const handlePostComment = async () => {
+    if (!editingTask || !newCommentText.trim()) return;
+    setPostingComment(true);
+    try {
+      const res = await apiFetch<{ comment: TaskComment; task: TaskItem }>(
+        `/api/v1/tasks/${editingTask.id}/comments`,
+        {
+          method: 'POST',
+          body: JSON.stringify({ content: newCommentText.trim() }),
+        }
+      );
+      showToast('Comentario publicado correctamente', 'success');
+      setNewCommentText('');
+      setTaskComments((prev) => [...prev, res.comment]);
+      await onRefresh();
+    } catch (err: any) {
+      showToast(err?.message || 'Error al publicar comentario', 'error');
+    } finally {
+      setPostingComment(false);
+    }
   };
 
   const handleSaveEditTask = async (e: React.FormEvent) => {
@@ -455,6 +563,12 @@ export function KanbanView({
     }
     if (trimmed.length > 500) {
       setEditTaskError('La descripción técnica no puede exceder 500 caracteres');
+      return;
+    }
+    if (editTaskStatus === 'DONE' && editingTask.hasActiveImpediment) {
+      setEditTaskError(
+        'No se puede mover a Hecho: la tarea tiene impedimentos abiertos pendientes de resolución por el Scrum Master (RF5 / HU #9).'
+      );
       return;
     }
     setSavingEditTask(true);
@@ -750,6 +864,7 @@ export function KanbanView({
                             onChangeStatus={persistTaskStatus}
                             onEditTask={handleOpenEditTask}
                             onDeleteTask={handleDeleteTask}
+                            onManageImpediments={setImpedimentTask}
                           />
                         ))
                       )}
@@ -853,70 +968,162 @@ export function KanbanView({
               ? ` · ${storyMap.get(editingTask.userStoryId)?.title}`
               : ''
           }`}
-          size="md"
+          size="lg"
         >
-          <form onSubmit={handleSaveEditTask} className="space-y-4">
-            <Textarea
-              label="Descripción técnica"
-              required
-              rows={3}
-              autoFocus
-              value={editTaskDesc}
-              onChange={(e) => {
-                setEditTaskDesc(e.target.value);
-                setEditTaskError('');
-              }}
-              placeholder="Descripción técnica de la tarea"
-              error={editTaskError}
-            />
+          <div className="space-y-6">
+            <form onSubmit={handleSaveEditTask} className="space-y-4">
+              <Textarea
+                label="Descripción técnica"
+                required
+                rows={3}
+                autoFocus
+                value={editTaskDesc}
+                onChange={(e) => {
+                  setEditTaskDesc(e.target.value);
+                  setEditTaskError('');
+                }}
+                placeholder="Descripción técnica de la tarea"
+                error={editTaskError}
+              />
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <Select
-                label="Estado Kanban"
-                value={editTaskStatus}
-                onChange={(e) => setEditTaskStatus(e.target.value as TaskStatus)}
-              >
-                {KANBAN_COLUMNS.map((col) => (
-                  <option key={col.id} value={col.id}>
-                    {col.title}
-                  </option>
-                ))}
-              </Select>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <Select
+                  label="Estado Kanban"
+                  value={editTaskStatus}
+                  onChange={(e) => setEditTaskStatus(e.target.value as TaskStatus)}
+                >
+                  {KANBAN_COLUMNS.map((col) => (
+                    <option key={col.id} value={col.id}>
+                      {col.title}
+                    </option>
+                  ))}
+                </Select>
 
-              <Select
-                label="Responsable asignado"
-                value={editTaskAssigneeId}
-                onChange={(e) => setEditTaskAssigneeId(e.target.value)}
-              >
-                <option value="">Sin asignar</option>
-                {projectUsers.map((u) => (
-                  <option key={u.id} value={u.id}>
-                    {u.id === user?.id ? `${u.fullName} (Yo)` : u.fullName}
-                  </option>
-                ))}
-              </Select>
+                <Select
+                  label="Responsable asignado"
+                  value={editTaskAssigneeId}
+                  onChange={(e) => setEditTaskAssigneeId(e.target.value)}
+                >
+                  <option value="">Sin asignar</option>
+                  {projectUsers.map((u) => (
+                    <option key={u.id} value={u.id}>
+                      {u.id === user?.id ? `${u.fullName} (Yo)` : u.fullName}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+
+              <div className="flex justify-end gap-2.5 pt-2 border-t border-graphite">
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setEditingTask(null)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="sm"
+                  loading={savingEditTask}
+                >
+                  Guardar cambios
+                </Button>
+              </div>
+            </form>
+
+            {/* Comments Section (HU #12) */}
+            <div className="pt-4 border-t border-graphite space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-iris-violet" />
+                  <h4 className="text-[14px] font-semibold text-bone">
+                    Comentarios de seguimiento (HU #12)
+                  </h4>
+                  <Badge variant="purple" size="sm" shape="pill">
+                    {taskComments.length}
+                  </Badge>
+                </div>
+              </div>
+
+              {/* Comments list */}
+              <div className="space-y-2.5 max-h-48 overflow-y-auto pr-1">
+                {loadingComments ? (
+                  <p className="text-[12px] text-fog">Cargando comentarios...</p>
+                ) : taskComments.length === 0 ? (
+                  <div className="p-3 rounded-inputs bg-carbon/50 border border-graphite/60 text-center text-[12px] text-fog">
+                    No hay comentarios de seguimiento aún. Agrega una nota o actualización técnica a continuación.
+                  </div>
+                ) : (
+                  taskComments.map((comment) => (
+                    <div
+                      key={comment.id}
+                      className="p-3 rounded-inputs bg-carbon border border-graphite/70 space-y-1.5"
+                    >
+                      <div className="flex items-center justify-between text-[11px]">
+                        <span className="font-semibold text-paper flex items-center gap-1.5">
+                          <UserAvatar name={comment.authorName} size="xs" />
+                          {comment.authorName}
+                        </span>
+                        <span className="text-fog font-mono">
+                          {new Date(comment.createdAt).toLocaleString('es-ES', {
+                            dateStyle: 'short',
+                            timeStyle: 'short',
+                          })}
+                        </span>
+                      </div>
+                      <p className="text-[12px] text-mist break-words pl-6 leading-relaxed">
+                        {comment.content}
+                      </p>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Add comment box or read-only notice */}
+              {project.myRole === 'DEVELOPER' || project.myRole === 'SCRUM_MASTER' ? (
+                <div className="space-y-2 pt-1">
+                  <Textarea
+                    placeholder="Escribe un comentario de seguimiento sobre el avance técnico..."
+                    rows={2}
+                    value={newCommentText}
+                    onChange={(e) => setNewCommentText(e.target.value)}
+                  />
+                  <div className="flex justify-end">
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      size="xs"
+                      disabled={!newCommentText.trim() || postingComment}
+                      loading={postingComment}
+                      onClick={handlePostComment}
+                      icon={<Send className="w-3 h-3" />}
+                    >
+                      Publicar comentario
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-2.5 rounded-inputs bg-carbon/50 border border-graphite/60 text-center text-[12px] text-fog">
+                  Modo lectura: Solo los roles Developer y Scrum Master del proyecto pueden publicar comentarios de seguimiento (HU #12).
+                </div>
+              )}
             </div>
-
-            <div className="flex justify-end gap-2.5 pt-2 border-t border-graphite">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                onClick={() => setEditingTask(null)}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="submit"
-                variant="primary"
-                size="sm"
-                loading={savingEditTask}
-              >
-                Guardar cambios
-              </Button>
-            </div>
-          </form>
+          </div>
         </Modal>
+      )}
+
+      {/* Impediment Management Modal (RF5, RF6, HU #9) */}
+      {impedimentTask && (
+        <ImpedimentModal
+          open={Boolean(impedimentTask)}
+          task={impedimentTask}
+          projectId={project.id}
+          myRole={project.myRole}
+          onClose={() => setImpedimentTask(null)}
+          onRefresh={onRefresh}
+        />
       )}
     </div>
   );

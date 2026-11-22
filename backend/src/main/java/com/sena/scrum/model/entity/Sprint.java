@@ -38,13 +38,25 @@ public class Sprint {
     @Column(name = "end_date", nullable = false)
     private LocalDate endDate;
 
-    @Enumerated(EnumType.STRING)
+    @Convert(converter = com.sena.scrum.model.converter.SprintStatusConverter.class)
     @Column(nullable = false, length = 50)
     @Builder.Default
     private SprintStatus status = SprintStatus.PLANNED;
 
     @Column(name = "closed_at")
     private OffsetDateTime closedAt;
+
+    @Column(name = "velocity")
+    @Builder.Default
+    private Integer velocity = 0;
+
+    @Column(name = "delivered_points")
+    @Builder.Default
+    private Integer deliveredPoints = 0;
+
+    @Column(name = "planned_points")
+    @Builder.Default
+    private Integer plannedPoints = 0;
 
     @Column(name = "created_at", updatable = false)
     @Builder.Default
