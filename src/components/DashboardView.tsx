@@ -298,10 +298,12 @@ export function DashboardView({
   const effectiveRole = useMemo(() => {
     if (rolePerspective !== 'AUTO') return rolePerspective;
     if (isAdmin) return 'ADMIN';
+    if (user?.email?.includes('master') || user?.title?.toLowerCase().includes('scrum')) return 'SCRUM_MASTER';
+    if (user?.email?.includes('po') || user?.title?.toLowerCase().includes('product')) return 'PRODUCT_OWNER';
     if (projects.some((p) => p.myRole === 'PRODUCT_OWNER')) return 'PRODUCT_OWNER';
     if (projects.some((p) => p.myRole === 'SCRUM_MASTER')) return 'SCRUM_MASTER';
     return 'DEVELOPER';
-  }, [rolePerspective, isAdmin, projects]);
+  }, [rolePerspective, isAdmin, user, projects]);
 
   // Donut chart distribution calculations
   const donutData = useMemo(() => {
@@ -456,9 +458,9 @@ export function DashboardView({
 
           {loading ? (
             <>
-              <div className="h-8 w-32 rounded-buttons bg-graphite/40 animate-gpu-pulse hidden sm:inline-block" />
-              <div className="h-8 w-28 rounded-buttons bg-graphite/40 animate-gpu-pulse hidden sm:inline-block" />
-              <div className="h-8 w-32 rounded-buttons bg-graphite/40 animate-gpu-pulse hidden sm:inline-block" />
+              <div className="h-8 w-32 rounded-buttons bg-graphite/40 animate-gpu-pulse" />
+              <div className="h-8 w-28 rounded-buttons bg-graphite/40 animate-gpu-pulse" />
+              <div className="h-8 w-32 rounded-buttons bg-graphite/40 animate-gpu-pulse" />
             </>
           ) : (
             <>
@@ -522,7 +524,7 @@ export function DashboardView({
       </div>
 
       {/* Role-Specific Contextual Guidance Banner */}
-      <div className="p-4 rounded-cards bg-carbon/90 border border-graphite/70 shadow-subtle flex items-start gap-3.5">
+      <div className="p-4 rounded-cards bg-carbon/90 border border-graphite/70 shadow-subtle flex items-start gap-3.5 min-h-[96px] shrink-0">
         <div className="p-2 rounded-lg bg-signal-teal/10 text-signal-teal shrink-0 mt-0.5 border border-signal-teal/20 shadow-[0_0_10px_rgba(25,217,232,0.15)]">
           {effectiveRole === 'PRODUCT_OWNER' ? (
             <Target className="w-5 h-5" />
@@ -595,9 +597,9 @@ export function DashboardView({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: Proyectos Activos */}
           <motion.div
-            initial={shouldReduceMotion ? {} : { opacity: 0, y: 10 }}
-            animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.18 }}
+            initial={shouldReduceMotion ? {} : { opacity: 0 }}
+            animate={shouldReduceMotion ? {} : { opacity: 1 }}
+            transition={{ duration: 0.16 }}
             className="p-5 rounded-2xl bg-carbon border border-graphite/80 hover:border-signal-teal/40 shadow-[0_4px_24px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_16px_rgba(25,217,232,0.1)] transition-all duration-200 flex flex-col justify-between min-h-[175px] relative overflow-hidden group"
           >
             <div className="flex items-start justify-between gap-2">
@@ -629,9 +631,9 @@ export function DashboardView({
 
           {/* Card 2: Sprints en Curso */}
           <motion.div
-            initial={shouldReduceMotion ? {} : { opacity: 0, y: 10 }}
-            animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.22 }}
+            initial={shouldReduceMotion ? {} : { opacity: 0 }}
+            animate={shouldReduceMotion ? {} : { opacity: 1 }}
+            transition={{ duration: 0.16 }}
             className="p-5 rounded-2xl bg-carbon border border-graphite/80 hover:border-pulse-green/40 shadow-[0_4px_24px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_16px_rgba(48,217,155,0.1)] transition-all duration-200 flex flex-col justify-between min-h-[175px] relative overflow-hidden group"
           >
             <div className="flex items-start justify-between gap-2">
@@ -665,9 +667,9 @@ export function DashboardView({
 
           {/* Card 3: Historias de Usuario */}
           <motion.div
-            initial={shouldReduceMotion ? {} : { opacity: 0, y: 10 }}
-            animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.26 }}
+            initial={shouldReduceMotion ? {} : { opacity: 0 }}
+            animate={shouldReduceMotion ? {} : { opacity: 1 }}
+            transition={{ duration: 0.16 }}
             className="p-5 rounded-2xl bg-carbon border border-graphite/80 hover:border-signal-teal/40 shadow-[0_4px_24px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_16px_rgba(25,217,232,0.1)] transition-all duration-200 flex flex-col justify-between min-h-[175px] relative overflow-hidden group"
           >
             <div className="flex items-start justify-between gap-2">
@@ -707,9 +709,9 @@ export function DashboardView({
 
           {/* Card 4: Entrega de Puntos */}
           <motion.div
-            initial={shouldReduceMotion ? {} : { opacity: 0, y: 10 }}
-            animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
+            initial={shouldReduceMotion ? {} : { opacity: 0 }}
+            animate={shouldReduceMotion ? {} : { opacity: 1 }}
+            transition={{ duration: 0.16 }}
             className="p-5 rounded-2xl bg-carbon border border-graphite/80 hover:border-iris-violet/40 shadow-[0_4px_24px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_16px_rgba(168,85,247,0.1)] transition-all duration-200 flex flex-col justify-between min-h-[175px] relative overflow-hidden group"
           >
             <div className="flex items-start justify-between gap-2">
@@ -1092,10 +1094,10 @@ export function DashboardView({
               return (
                 <motion.div
                   key={project.id}
-                  initial={shouldReduceMotion ? {} : { opacity: 0, y: 12 }}
-                  animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
-                  transition={{ duration: 0.18, delay: Math.min(index * 0.05, 0.3) }}
-                  className="group rounded-2xl bg-carbon border border-graphite/80 hover:border-signal-teal/40 hover:shadow-[0_8px_30px_rgba(0,0,0,0.5),0_0_20px_rgba(25,217,232,0.08)] transition-all duration-200 p-5 flex flex-col justify-between gap-5 relative overflow-hidden"
+                  initial={shouldReduceMotion ? {} : { opacity: 0 }}
+                  animate={shouldReduceMotion ? {} : { opacity: 1 }}
+                  transition={{ duration: 0.16 }}
+                  className="group rounded-2xl bg-carbon border border-graphite/80 hover:border-signal-teal/40 hover:shadow-[0_8px_30px_rgba(0,0,0,0.5),0_0_20px_rgba(25,217,232,0.08)] transition-all duration-200 p-5 flex flex-col justify-between gap-5 relative overflow-hidden min-h-[265px]"
                 >
                   {/* Subtle top indicator bar */}
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-signal-teal via-iris-violet to-pulse-green opacity-0 group-hover:opacity-100 transition-opacity duration-200" />

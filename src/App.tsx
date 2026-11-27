@@ -72,7 +72,7 @@ function WorkspaceApp() {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const [projectsLoading, setProjectsLoading] = useState(false);
+  const [projectsLoading, setProjectsLoading] = useState(true);
   const [projectsError, setProjectsError] = useState('');
 
   // Active Project Workspace data
