@@ -33,6 +33,9 @@ public class AuditLogController {
             @RequestParam(defaultValue = "100") int limit,
             Authentication authentication
     ) {
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new org.springframework.security.authentication.InsufficientAuthenticationException("Usuario no autenticado");
+        }
         User currentUser = authService.getCurrentUser(authentication.getName());
         List<AuditLogResponse> logs = auditLogService.getAuditLogs(action, limit, currentUser);
         return ResponseEntity.ok(Map.of("auditLogs", logs));

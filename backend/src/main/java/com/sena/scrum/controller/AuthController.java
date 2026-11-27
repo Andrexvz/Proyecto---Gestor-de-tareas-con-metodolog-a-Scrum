@@ -42,6 +42,9 @@ public class AuthController {
     @GetMapping("/me")
     @Operation(summary = "Perfil de usuario autenticado", description = "Retorna la información del usuario autenticado vía JWT.")
     public ResponseEntity<Map<String, Object>> getMe(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new org.springframework.security.authentication.InsufficientAuthenticationException("Usuario no autenticado");
+        }
         User user = authService.getCurrentUser(authentication.getName());
         Map<String, Object> userMap = Map.of(
                 "id", user.getId(),

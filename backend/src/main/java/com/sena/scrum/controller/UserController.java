@@ -59,6 +59,9 @@ public class UserController {
             @RequestParam(defaultValue = "me") String scope,
             Authentication authentication
     ) {
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new org.springframework.security.authentication.InsufficientAuthenticationException("Usuario no autenticado");
+        }
         User currentUser = authService.getCurrentUser(authentication.getName());
         List<TaskResponse> tasks = taskService.getMyTasks(currentUser, scope);
         return ResponseEntity.ok(Map.of("tasks", tasks));

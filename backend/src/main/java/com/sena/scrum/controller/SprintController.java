@@ -68,6 +68,9 @@ public class SprintController {
             @RequestBody(required = false) SprintCloseRequest request,
             Authentication authentication
     ) {
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new org.springframework.security.authentication.InsufficientAuthenticationException("Usuario no autenticado");
+        }
         User currentUser = authService.getCurrentUser(authentication.getName());
         SprintCloseRequest closeReq = request != null ? request : new SprintCloseRequest();
         SprintCloseResponse summary = sprintService.closeSprint(id, closeReq, currentUser);

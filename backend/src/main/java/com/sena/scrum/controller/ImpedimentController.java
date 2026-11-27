@@ -45,6 +45,9 @@ public class ImpedimentController {
             @Valid @RequestBody ImpedimentRequest request,
             Authentication authentication
     ) {
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new org.springframework.security.authentication.InsufficientAuthenticationException("Usuario no autenticado");
+        }
         User currentUser = authService.getCurrentUser(authentication.getName());
         ImpedimentResponse impediment = impedimentService.createImpediment(taskId, request, currentUser);
         TaskResponse task = taskService.getTaskById(taskId);
@@ -58,6 +61,9 @@ public class ImpedimentController {
             @Valid @RequestBody ImpedimentResolveRequest request,
             Authentication authentication
     ) {
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new org.springframework.security.authentication.InsufficientAuthenticationException("Usuario no autenticado");
+        }
         User currentUser = authService.getCurrentUser(authentication.getName());
         ImpedimentResponse impediment = impedimentService.resolveImpediment(impedimentId, request, currentUser);
         TaskResponse task = taskService.getTaskById(impediment.getTaskId());
