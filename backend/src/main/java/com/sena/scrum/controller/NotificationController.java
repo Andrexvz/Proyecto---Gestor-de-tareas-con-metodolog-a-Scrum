@@ -28,6 +28,9 @@ public class NotificationController {
     @GetMapping
     @Operation(summary = "Listar notificaciones del usuario", description = "Obtiene las notificaciones ordenadas por fecha reciente.")
     public ResponseEntity<Map<String, Object>> getNotifications(Authentication authentication) {
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new org.springframework.security.authentication.InsufficientAuthenticationException("Usuario no autenticado");
+        }
         User currentUser = authService.getCurrentUser(authentication.getName());
         List<NotificationResponse> list = notificationService.getNotificationsByUser(currentUser.getId());
         return ResponseEntity.ok(Map.of("notifications", list));
@@ -39,6 +42,9 @@ public class NotificationController {
             @RequestBody(required = false) Map<String, Object> body,
             Authentication authentication
     ) {
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new org.springframework.security.authentication.InsufficientAuthenticationException("Usuario no autenticado");
+        }
         User currentUser = authService.getCurrentUser(authentication.getName());
         Long notificationId = null;
         if (body != null && body.containsKey("notificationId") && body.get("notificationId") != null) {

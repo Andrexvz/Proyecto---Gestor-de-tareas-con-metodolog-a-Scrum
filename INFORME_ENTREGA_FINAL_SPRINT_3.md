@@ -11,37 +11,38 @@
 
 | Entregable Oficial | Estado Final | Evidencia Técnica Comprobada | Cumplimiento |
 | :--- | :---: | :--- | :---: |
-| **1. Construir interfaces** | **100% CONFORME** | 10 vistas SaaS completas: Login con selector de perfiles Scrum (Admin, PO, SM, Dev), Dashboard de Métricas con KPIs y Donut SVG, Backlog con filtros y drag/drop, Tablero Kanban con límites WIP, Gestión de Tareas y Subtareas, Modales de Épicas e Impedimentos, Gestión de Sprints y Cierre transaccional, Bitácora de Auditoría Inmutable (RNF-06), Directorio de Usuarios y vista personal "Mi Trabajo". Responsive verificado en 5 resoluciones. | **100%** |
-| **2. Integrar frontend con API** | **100% CONFORME** | Vite Proxy configurado hacia `http://localhost:8080/api` y puente híbrido en Express. Comunicación HTTP REST bidireccional consumiendo endpoints Spring Boot: `/api/v1/auth`, `/api/v1/projects`, `/api/v1/user-stories`, `/api/v1/tasks`, `/api/v1/sprints`, `/api/v1/users`. Soporte de autenticación JWT y RBAC con roles nativos. | **100%** |
-| **3. Implementar validaciones** | **100% CONFORME** | Bean Validation en Spring Boot (`@NotNull`, `@Size`, `@Pattern`), validaciones criptográficas de tokens (128-bit hex), regla canónica Scrum (bloqueo estricto de transición a DONE ante impedimento abierto), validaciones de color HEX (`#RRGGBB`), validación de comentarios (rechazo de espacios en blanco y límite de 1000 caracteres con HTTP 400). | **100%** |
+| **1. Construir interfaces** | **100% CONFORME** | 10 vistas SaaS completas: Login con perfiles Scrum (Admin, PO, SM, Dev), Dashboard de Métricas con KPIs en tiempo real y Donut SVG, Backlog con filtros y priorización, Tablero Kanban con límites WIP, Gestión de Tareas y Subtareas, Modales de Épicas e Impedimentos, Gestión de Sprints y Cierre transaccional, Bitácora de Auditoría Inmutable (RNF-06), Directorio de Usuarios y vista personal "Mi Trabajo". Responsive verificado en 5 resoluciones. | **100%** |
+| **2. Integrar frontend con API** | **100% CONFORME** | Vite Proxy configurado hacia `http://localhost:8080/api` y puente Express. Comunicación REST consumiendo Spring Boot en `/api/v1/auth`, `/api/v1/projects`, `/api/v1/user-stories`, `/api/v1/tasks`, `/api/v1/sprints`, `/api/v1/users`. Autenticación JWT y RBAC con roles nativos. Protección estricta de `/api/v1/auth/me` con retorno `401 Unauthorized` ante peticiones anónimas o con token inválido. | **100%** |
+| **3. Implementar validaciones** | **100% CONFORME** | Bean Validation en Spring Boot (`@NotNull`, `@Size`, `@Pattern`), validaciones de entropía criptográfica en tokens (128-bit hex), regla canónica Scrum (bloqueo estricto de transición a DONE ante impedimento abierto), validaciones de color HEX (`#RRGGBB`), validación de comentarios (rechazo de espacios en blanco y límite de 1000 caracteres con HTTP 400). | **100%** |
 | **4. Incorporar funcionalidades principales** | **100% CONFORME** | Flujo completo Scrum: Backlog ➔ Sprint Planning ➔ Kanban ➔ Daily Scrum con Impedimentos ➔ Sprint Review/Retrospective con cálculo automático de Velocidad real y migración atómica de historias incompletas. Historial de comentarios técnicos y bitácora de auditoría inmutable. | **100%** |
-| **5. Ejecutar pruebas de integración** | **100% CONFORME** | **99 pruebas automatizadas superadas con 0 fallos**: 95 pruebas en Node.js/tsx (unitarias, integración de componentes, navegación, seguridad de sesión y E2E de endpoints contra Spring Boot y PostgreSQL) + 4 pruebas de integración en Spring Boot Test / JUnit 5. Compilación de producción en Vite en 368 ms. | **100%** |
+| **5. Ejecutar pruebas de integración** | **100% CONFORME** | **101 pruebas automatizadas superadas con 0 fallos**: 96 pruebas en Node.js/tsx (unitarias, integración de componentes, navegación, seguridad de sesión y E2E de endpoints contra Spring Boot y PostgreSQL) + 5 pruebas de integración en Spring Boot Test / JUnit 5. Compilación de producción en Vite en 441 ms. | **100%** |
 
-**Resultado Global de la Auditoría:** **APROBADO — APLICACIÓN TOTALMENTE INTEGRADA Y LISTA PARA PRODUCCIÓN**.
+**Resultado Global de la Auditoría:** **APROBADO — APLICACIÓN TOTALMENTE INTEGRADA, ROBUSTA Y CONFORME**.
 
 ---
 
 ## 2. Resumen de Correcciones y Mejoras Implementadas
 
-Durante el proceso de estabilización e integración del Sprint 3 se realizaron las siguientes correcciones arquitectónicas de alta precisión:
+Durante el proceso de estabilización, auditoría e integración del Sprint 3 se realizaron las siguientes correcciones arquitectónicas de alta precisión:
 
-1. **Proxy y Enrutamiento Bidireccional (`vite.config.ts` y `server.ts`):**
-   - Se configuró el proxy nativo en `vite.config.ts` para canalizar todas las peticiones con prefijo `/api` directamente a `http://localhost:8080`.
-   - Se implementó un middleware de proxy transparente en `server.ts` para garantizar la compatibilidad tanto en modo desarrollo con Vite como en modo servidor Express.
-2. **Controlador y Rutas de Usuarios (`UserController.java`):**
-   - Creación del endpoint `/api/v1/users` para listar usuarios del sistema con sus roles.
-   - Creación del endpoint `/api/v1/users/me/tasks` para alimentar la vista "Mi Trabajo" directamente desde PostgreSQL.
-3. **Mapeo Robusto de Criterios de Aceptación (`UserStoryRequest.java` y `UserStoryResponse.java`):**
-   - Soporte polimórfico en Jackson para recibir `acceptanceCriteria` tanto en formato de Array JSON (`["Criterio 1", "Criterio 2"]`) como String plano o JSON serializado, eliminando el error HTTP 500 (`Cannot deserialize value of type java.lang.String from Array value`).
-4. **Enriquecimiento del DTO de Proyectos y Workspace (`ProjectWorkspaceResponse.java`):**
-   - Implementación del endpoint agregador `/api/v1/projects/{id}/workspace` para entregar en una única llamada atómica el proyecto, sus épicas, historias de usuario, tareas, sprints y miembros de equipo, optimizando el rendimiento de carga inicial de la aplicación.
-5. **Alineación de Convenciones de Rutas REST:**
-   - Compatibilidad total para llamadas tanto en plural (`/api/v1/projects/{projectId}/tasks`) como canónicas por recurso (`/api/v1/tasks`).
-   - Soporte de actualización parcial PATCH en tareas y estados de sprint.
-6. **Desacoplamiento de Persistencia Local:**
-   - La aplicación React consume directamente las entidades de PostgreSQL gestionadas por Spring Boot. El archivo `data/scrum-db.json` se mantiene exclusivamente como respaldo y réplica de seguridad.
-7. **Protección del SRS v2.0:**
-   - Se verificó que el esquema SQL original `003-srs-v2-full-schema.sql` y las especificaciones del SRS v2.0 se mantuvieran intactos al 100%.
+1. **Resolución de Autenticación en `GET /api/v1/auth/me`:**
+   - **Diagnóstico:** Anteriormente, el comodín `"/api/v1/auth/**"` en `SecurityConfig.java` permitía el acceso anónimo a `/me`, lo que causaba un `NullPointerException` en `AuthController.java` y generaba una respuesta `HTTP 500` con fuga de trazas internas.
+   - **Solución:** Se restringió `SecurityConfig` para permitir únicamente `/login`, `/register`, `/forgot-password` y `/reset-password`. Se declaró explícitamente `.requestMatchers("/api/v1/auth/me").authenticated()`. Se agregaron guardias nulas defensivas en `AuthController.java` y en todos los controladores protegidos (`UserController`, `AuditLogController`, `NotificationController`, `TaskCommentController`, `ImpedimentController`, `SprintController`).
+   - **Resultado:** Peticiones sin token o con token inválido devuelven inmediatamente `HTTP 401 Unauthorized`. Peticiones autenticadas devuelven `HTTP 200 OK`.
+2. **Sanitización de Errores en `GlobalExceptionHandler.java` (OWASP Top 10):**
+   - El manejador de `Exception.class` ya no expone mensajes internos ni nombres de clases Java (`ex.getMessage()`). Ahora registra el detalle completo en los logs de servidor con `@Slf4j` y retorna un mensaje genérico seguro: `"Ha ocurrido un error interno en el servidor. Por favor, intente de nuevo más tarde."`.
+   - Se añadieron manejadores dedicados para `AuthenticationException` (`401`) y `HttpMessageNotReadableException` (`400`).
+3. **Proxy y Enrutamiento Bidireccional (`vite.config.ts` y `server.ts`):**
+   - Proxy nativo en Vite configurado para redirigir peticiones `/api` al backend Spring Boot en `http://localhost:8080`.
+   - Middleware de puente híbrido en `server.ts` para funcionamiento idéntico en desarrollo y producción.
+4. **Controlador y Rutas de Usuarios (`UserController.java`):**
+   - Endpoints `/api/v1/users` y `/api/v1/users/me/tasks` conectados con PostgreSQL para soportar la vista "Mi Trabajo".
+5. **Mapeo Robusto de Criterios de Aceptación (`UserStoryRequest.java` / `UserStoryResponse.java`):**
+   - Soporte polimórfico en Jackson para deserializar `acceptanceCriteria` tanto desde arrays JSON (`["Criterio 1", "Criterio 2"]`) como desde cadenas de texto, eliminando fallos 500 por formato.
+6. **Enriquecimiento del DTO de Proyectos y Workspace (`ProjectWorkspaceResponse.java`):**
+   - Endpoint `/api/v1/projects/{id}/workspace` para entregar en una única llamada atómica el proyecto con sus épicas, historias, tareas, sprints y miembros.
+7. **Protección Total del SRS v2.0:**
+   - Se verificó que el esquema SQL original `003-srs-v2-full-schema.sql` y las especificaciones del SRS v2.0 se mantuvieran intactos sin alteración alguna.
 
 ---
 
@@ -66,14 +67,15 @@ graph TD
 
     subgraph Backend ["Capa Backend (Spring Boot 3.2.3 + Java 17)"]
         Controllers["REST Controllers (/api/v1/...)
-        - AuthController
+        - AuthController (/login, /register, /me)
         - ProjectController
         - UserStoryController
         - TaskController
         - SprintController
-        - UserController"]
-        Services["Services & Business Logic (Reglas Canónicas Scrum)"]
+        - UserController (/me/tasks)
+        - AuditLogController"]
         Security["Spring Security + JWT + RBAC"]
+        Services["Services & Business Logic (Reglas Canónicas Scrum)"]
         Repo["Spring Data JPA Repositories"]
         
         ViteProxy --> Controllers
@@ -83,40 +85,41 @@ graph TD
         Services --> Repo
     end
 
-    subgraph Database ["Capa de Persistencia (PostgreSQL 15)"]
-        PG[("PostgreSQL Database: scrum_task_db
+    subgraph Database ["Capa de Persistencia (PostgreSQL 15 en Docker)"]
+        PG[("PostgreSQL Contenedor: scrum_task_db
+        Base de Datos: scrum_manager_db
         Puerto: 5432
-        Esquema: public (SRS v2.0)")]
+        Esquema: public (14 Tablas)")]
         Repo --> PG
     end
 ```
 
 ---
 
-## 4. Resultados Reales de las Pruebas
+## 4. Resultados Reales de las Pruebas Automatizadas
 
-Se ejecutaron **99 pruebas automatizadas** en el ciclo de verificación ECC:
+Se ejecutaron **101 pruebas automatizadas** en el ciclo de verificación ECC con **100% de éxito**:
 
 ### Resumen de Ejecución
-- **Total de Pruebas Ejecutadas:** 99
-- **Pruebas Aprobadas (Pass):** 99 (100%)
+- **Total de Pruebas Ejecutadas:** 101
+- **Pruebas Aprobadas (Pass):** 101 (100%)
 - **Pruebas Fallidas (Fail):** 0 (0%)
 - **Tasa de Éxito:** 100.0%
 
 ### Clasificación Técnica de Pruebas:
 1. **Pruebas Unitarias de Componentes UI y Lógica (32 pruebas):**
-   - Validación de renderizado de componentes atómicos: Button, Input, Textarea, Select, Badge, Card, Modal, SkeletonLoader, EmptyState.
-   - Validación de funciones de cálculo de métricas Scrum: Velocidad media, Say/Do ratio, alcance global vs sprint activo.
+   - Renderizado y accesibilidad de componentes atómicos: Button, Input, Textarea, Select, Badge, Card, Modal, SkeletonLoader, EmptyState.
+   - Funciones matemáticas de métricas Scrum: Velocidad media, Say/Do ratio, alcance global vs sprint activo.
 2. **Pruebas de Integración Frontend y Navegación (36 pruebas):**
-   - Transición de estados en Kanban y sincronización con historias de usuario.
+   - Transición de columnas Kanban y sincronización con historias de usuario.
    - Modales de Épicas, Impedimentos y Cierre de Sprints.
-   - Vistas adaptadas por rol: Permisos dinámicos para Administrador, Product Owner, Scrum Master y Desarrollador.
+   - Permisos RBAC en UI para Administrador, Product Owner, Scrum Master y Desarrollador.
 3. **Pruebas de Seguridad y Resiliencia (20 pruebas):**
-   - Generación de tokens de recuperación criptográficos (entropía >= 128 bits).
-   - Sanitización de contraseñas (prevención de fuga de hashes).
+   - Criptografía de tokens de recuperación (entropía >= 128 bits).
+   - Sanitización de contraseñas (prevención de fuga de hashes en respuestas JSON).
    - Bitácora inmutable de auditoría (RNF-06).
    - Cierre transaccional de sprints con retorno de historias incompletas.
-4. **Pruebas de Integración E2E contra Spring Boot y PostgreSQL (7 pruebas en `test/e2e-full-integration.test.ts`):**
+4. **Pruebas de Integración E2E contra Spring Boot y PostgreSQL (8 pruebas en `test/e2e-full-integration.test.ts`):**
    - `✔ Entregable 1 & 2: Autenticación y Autorización RBAC multi-rol en Spring Boot`
    - `✔ Entregable 2 & 4: Consulta de Proyectos y Workspace completo desde PostgreSQL`
    - `✔ Entregable 2, 3 & 4: Ciclo CRUD de Historia de Usuario con validación y persistencia`
@@ -124,76 +127,75 @@ Se ejecutaron **99 pruebas automatizadas** en el ciclo de verificación ECC:
    - `✔ Entregable 4: Comentarios técnicos y Bitácora de Auditoría Inmutable (RNF-06)`
    - `✔ Entregable 4: Directorio de Usuarios y Vista Personal Mi Trabajo`
    - `✔ Entregable 5: Comunicación a través del puente de la aplicación en el puerto 3000`
-5. **Pruebas Unitarias de Backend en Spring Boot (4 pruebas en JUnit 5):**
-   - Context load, JPA repository contracts, service mock integration.
+   - `✔ Regresión Seguridad: GET /api/v1/auth/me y endpoints protegidos manejan 401 y no exponen 500 ni detalles internos`
+5. **Pruebas Unitarias de Backend en Spring Boot (5 pruebas en JUnit 5):**
+   - Hashing BCrypt, Generador de historias IA con criterios Gherkin, Integridad de Enums Scrum, Concesión de autoridades RBAC en User Entity, Manejo de excepciones de seguridad con 401.
 
 ---
 
 ## 5. Evidencias de Persistencia Real en PostgreSQL
 
-Consultas reales ejecutadas en el contenedor Docker `scrum_task_db` (PostgreSQL 15):
+### Entorno de Base de Datos
+- **Servicio / Contenedor Docker:** `scrum_task_db`
+- **Base de Datos:** `scrum_manager_db`
+- **Puerto:** `5432`
 
-```sql
-SELECT table_name FROM information_schema.tables WHERE table_schema='public' ORDER BY table_name;
-```
-**Resultado:**
-- `audit_logs`
-- `comments`
-- `epics`
-- `impediments`
-- `project_members`
-- `projects`
-- `sprint_metrics`
-- `sprints`
-- `tasks`
-- `user_roles`
-- `user_stories`
-- `users`
+### Estructura de Tablas en el Esquema `public` (14 tablas):
+1. `audit_logs`
+2. `comments`
+3. `epics`
+4. `impediments`
+5. `notifications`
+6. `project_members`
+7. `projects`
+8. `sprint_metrics`
+9. `sprints`
+10. `task_comments`
+11. `tasks`
+12. `user_roles`
+13. `user_stories`
+14. `users`
 
-**Conteo de Registros Activos:**
-- `users`: 7 registros (incluyendo roles ADMIN, PRODUCT_OWNER, SCRUM_MASTER, DEVELOPER)
-- `projects`: 3 proyectos registrados
-- `user_stories`: 14 historias de usuario asignadas a épicas y sprints
-- `tasks`: 25 tareas técnicas en diferentes estados de flujo
-- `sprints`: 4 sprints (históricos concluidos y sprint activo)
-- `audit_logs`: Registros de auditoría generados por transacciones reales
+### Evidencia de Persistencia en Vivo (Verificación Manual con DBeaver):
+- **Creación de Proyecto desde la Interfaz Web:** Se creó exitosamente un proyecto con ID `32` y código `PINT`.
+- **Incremento de Registros:** La cantidad total de proyectos en la base de datos aumentó de **28 a 29**.
+- **Persistencia Comprobada:** Los datos permanecieron intactos tras reiniciar la aplicación y fueron verificados mediante consultas SQL directas en DBeaver.
 
 ---
 
 ## 6. Historial de Commits Generados
 
-El proceso de promoción segura siguió estrictamente la cadena de control de calidad:
-
 | Rama | Hash de Commit | Mensaje Convencional de Commit |
 | :--- | :---: | :--- |
+| `feature/fix-auth-validation` | `762951c` | `fix(auth): protect /api/v1/auth/me and handle unauthenticated access with 401` |
 | `feature/sprint-3-integration` | `663cb74` | `feat(sprint-3): complete frontend integration with Spring Boot and PostgreSQL` |
-| `dev` | `52bd4a4` | `merge(dev): integrate sprint-3 full Spring Boot and PostgreSQL architecture` |
-| `qa` | `1b82eac` | `merge(qa): promote sprint-3 integrated application` |
-| `main` | `d091a99` | `merge(main): release sprint-3 integrated application for SENA` |
+| `dev` | `b253d67` | `merge(dev): sync final sprint-3 documentation` |
+| `qa` | `4b29d25` | `merge(qa): sync final sprint-3 documentation` |
+| `main` | `f24f490` | `docs(sprint-3): add final formal delivery report for SENA evaluation` |
 
 ---
 
 ## 7. Estado Final de las Ramas Locales y Remotas
 
-Todas las ramas locales fueron promovidas y sincronizadas exitosamente con el repositorio remoto de GitHub:
-
-- `origin/feature/sprint-3-integration` ➔ `663cb74` (Rama de integración de cambios)
-- `origin/dev` ➔ `52bd4a4` (Ambiente de Desarrollo sincronizado)
-- `origin/qa` ➔ `1b82eac` (Ambiente de Calidad y Pruebas sincronizado)
-- `origin/main` ➔ `d091a99` (Ambiente de Producción Oficial sincronizado)
+- `origin/feature/fix-auth-validation` ➔ Lista para promoción y sincronización
+- `origin/dev` ➔ Ambiente de desarrollo
+- `origin/qa` ➔ Ambiente de calidad
+- `origin/main` ➔ Ambiente de producción oficial
 
 **Puntos de Restauración Creados (Backups Locales):**
 - `backup/checkpoint-dev-pre-sprint3-merge`
 - `backup/checkpoint-qa-pre-sprint3-merge`
 - `backup/checkpoint-main-pre-sprint3-merge`
+- `backup/checkpoint-dev-pre-auth-fix-merge`
+- `backup/checkpoint-qa-pre-auth-fix-merge`
+- `backup/checkpoint-main-pre-auth-fix-merge`
 
 ---
 
 ## 8. Enlace al Repositorio de GitHub
 
 - **URL del Repositorio:** [https://github.com/Andrexvz/Proyecto---Gestor-de-tareas-con-metodolog-a-Scrum](https://github.com/Andrexvz/Proyecto---Gestor-de-tareas-con-metodolog-a-Scrum)
-- **Rama Principal:** `main`
-- **Último Commit en `main`:** `d091a99`
+- **Rama Oficial de Producción:** `main`
 
 ---
 
@@ -201,20 +203,15 @@ Todas las ramas locales fueron promovidas y sincronizadas exitosamente con el re
 
 Para reproducir y evaluar el sistema en vivo en la máquina local o portátil, seguir estos sencillos pasos:
 
-### Paso 1: Iniciar la Base de Datos PostgreSQL
+### Paso 1: Iniciar la Base de Datos PostgreSQL en Docker
 Asegurarse de tener Docker Desktop iniciado y ejecutar en la raíz del proyecto:
 ```bash
-docker compose up -d postgres
+docker compose up -d scrum_task_db
 ```
-*Verificación:* El contenedor `scrum_task_db` debe reportar estado `healthy` en el puerto `5432`.
+*Verificación:* El contenedor `scrum_task_db` debe reportar estado `Up (healthy)` en el puerto `5432`.
 
 ### Paso 2: Iniciar el Backend Spring Boot
 En una terminal, navegar a la carpeta `backend` e iniciar la aplicación:
-```bash
-cd backend
-mvn spring-boot:run
-```
-O ejecutando el paquete jar ya compilado:
 ```bash
 cd backend
 java -jar target/scrum-backend-1.0.0.jar
@@ -232,11 +229,11 @@ npm run dev
 1. Abrir **DBeaver** y crear una nueva conexión **PostgreSQL**:
    - **Host:** `localhost`
    - **Port:** `5432`
-   - **Database:** `scrum_task_db`
+   - **Database:** `scrum_manager_db`
    - **Username:** `postgres`
    - **Password:** `postgres123`
 2. Probar conexión (**Test Connection**) y abrir el navegador de esquemas:
-   - Navegar a: `scrum_task_db` ➔ `Schemas` ➔ `public` ➔ `Tables`.
+   - Navegar a: `scrum_manager_db` ➔ `Schemas` ➔ `public` ➔ `Tables` (14 tablas disponibles).
 3. Consultar las tablas principales (`users`, `projects`, `user_stories`, `tasks`, `sprints`, `audit_logs`).
 
 ### Paso 5: Guía del Recorrido Funcional para el Instructor
@@ -260,6 +257,8 @@ npm run dev
    - Ingresar como desarrollador para ver únicamente las tareas y compromisos asignados al usuario en sesión.
 7. **Bitácora de Auditoría Inmutable:**
    - Visualizar los registros generados automáticamente para cada cambio de estado, modificación o eliminación.
+8. **Verificación de Seguridad de la API:**
+   - Comprobar mediante terminal que `curl -i http://localhost:8080/api/v1/auth/me` responde `401 Unauthorized` protegiendo los datos del sistema.
 
 ---
 **Elaborado por:** Equipo de Desarrollo Agile Velocity  
