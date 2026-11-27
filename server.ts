@@ -203,7 +203,7 @@ async function startServer() {
   // Explicit robots.txt endpoint for SEO & privacy compliance
   app.get('/robots.txt', (_req, res) => {
     res.type('text/plain');
-    res.send('# Agile Velocity - Private Scrum Management Platform\nUser-agent: *\nDisallow: /\n');
+    res.send('# Agile Velocity - Scrum Project Management Platform\nUser-agent: *\nAllow: /\nDisallow: /api/\n');
   });
 
   // --- AUTH ---

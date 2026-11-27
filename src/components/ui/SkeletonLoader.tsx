@@ -94,22 +94,25 @@ export function SkeletonKpi({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'p-5 rounded-2xl bg-carbon border border-graphite/80 min-h-[175px] flex flex-col justify-between',
+        'p-5 rounded-2xl bg-carbon border border-graphite/80 min-h-[175px] flex flex-col justify-between relative overflow-hidden',
         className
       )}
       aria-busy="true"
       aria-live="polite"
     >
-      <div className="flex items-start justify-between">
-        <SkeletonLoader variant="text" width={110} height={16} />
+      <div className="flex items-start justify-between gap-2">
+        <SkeletonLoader variant="text" width={120} height={16} />
         <SkeletonLoader variant="circle" width={32} height={32} />
       </div>
-      <div className="space-y-2 mt-2">
-        <SkeletonLoader variant="text" width={70} height={30} />
+      <div className="mt-2 space-y-1">
+        <div className="flex items-baseline gap-2">
+          <SkeletonLoader variant="text" width={60} height={32} />
+          <SkeletonLoader variant="custom" width={75} height={20} className="rounded-full" />
+        </div>
         <SkeletonLoader variant="text" width={140} height={12} />
       </div>
-      <div className="mt-3 pt-2 border-t border-graphite/40">
-        <SkeletonLoader variant="text" width="100%" height={14} />
+      <div className="mt-3 pt-1 border-t border-graphite/40">
+        <div className="h-7 w-full rounded bg-graphite/40 animate-gpu-pulse" />
       </div>
     </div>
   );
@@ -119,21 +122,62 @@ export function SkeletonChart({ className }: { className?: string }) {
   return (
     <div
       className={cn(
-        'p-5 rounded-2xl bg-carbon border border-graphite/80 min-h-[350px] flex flex-col justify-between',
+        'p-5 rounded-2xl bg-carbon border border-graphite/80 min-h-[365px] flex flex-col justify-between relative overflow-hidden',
         className
       )}
       aria-busy="true"
       aria-live="polite"
     >
       <div className="flex items-center justify-between mb-4">
-        <SkeletonLoader variant="text" width={180} height={18} />
-        <SkeletonLoader variant="text" width={80} height={14} />
+        <SkeletonLoader variant="text" width={190} height={20} />
+        <SkeletonLoader variant="text" width={85} height={16} />
       </div>
-      <div className="flex-1 w-full flex items-center justify-center my-4">
-        <SkeletonLoader variant="custom" className="w-full h-44 rounded-xl" />
+      <div className="flex-1 w-full flex items-center justify-center my-3">
+        <div className="w-full h-48 rounded-xl bg-graphite/40 animate-gpu-pulse" />
       </div>
       <div className="pt-3 border-t border-graphite/40">
-        <SkeletonLoader variant="text" width="100%" height={12} />
+        <SkeletonLoader variant="text" width="100%" height={14} />
+      </div>
+    </div>
+  );
+}
+
+export function SkeletonProjectCard({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        'p-5 rounded-2xl bg-carbon border border-graphite/80 min-h-[265px] flex flex-col justify-between gap-5 relative overflow-hidden',
+        className
+      )}
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <SkeletonLoader variant="custom" width={28} height={28} className="rounded-lg" />
+            <SkeletonLoader variant="text" width={55} height={18} />
+            <SkeletonLoader variant="custom" width={80} height={20} className="rounded-full" />
+          </div>
+          <SkeletonLoader variant="text" width={40} height={16} />
+        </div>
+
+        <div className="space-y-1.5 pt-1">
+          <SkeletonLoader variant="text" width="70%" height={20} />
+          <SkeletonLoader variant="text" lines={2} />
+        </div>
+      </div>
+
+      <div className="space-y-3 pt-3.5 border-t border-graphite/70">
+        <div className="flex items-center justify-between">
+          <SkeletonLoader variant="text" width={90} height={14} />
+          <SkeletonLoader variant="text" width={50} height={14} />
+        </div>
+        <div className="h-2 w-full rounded-full bg-graphite/50 animate-gpu-pulse" />
+        <div className="flex items-center justify-between pt-1">
+          <SkeletonLoader variant="button" width={90} height={26} />
+          <SkeletonLoader variant="button" width={90} height={26} />
+        </div>
       </div>
     </div>
   );

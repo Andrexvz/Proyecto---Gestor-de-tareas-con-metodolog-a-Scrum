@@ -38,6 +38,7 @@ import {
   SkeletonCard,
   SkeletonKpi,
   SkeletonChart,
+  SkeletonProjectCard,
 } from './ui';
 import type { ProjectSummary, ScrumRole, User } from '../types/scrum';
 import type { ActiveRoute } from './AppShell';
@@ -448,59 +449,74 @@ export function DashboardView({
             }
             icon={<CheckSquare className="w-3.5 h-3.5 text-signal-teal" />}
             title="Consultar todas las tareas asignadas en tus proyectos"
+            aria-label="Ver mis tareas asignadas"
           >
             Ver mis tareas
           </Button>
 
-          {activeProjectWithSprint && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => onOpenProject(activeProjectWithSprint.id, 'sprints')}
-              icon={<CalendarRange className="w-3.5 h-3.5 text-signal-teal" />}
-              title={`Abrir Sprint activo: ${activeProjectWithSprint.activeSprint?.name}`}
-            >
-              Abrir Sprint activo
-            </Button>
-          )}
-
-          {firstProj && (
+          {loading ? (
             <>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => onOpenProject(firstProj.id, 'kanban')}
-                icon={<Kanban className="w-3.5 h-3.5 text-pulse-green" />}
-                title="Abrir Tablero Kanban de historias y tareas técnicas"
-              >
-                Ir al Kanban
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => onOpenProject(firstProj.id, 'backlog')}
-                icon={<ListTodo className="w-3.5 h-3.5 text-lavender" />}
-                title="Explorar y priorizar el Product Backlog"
-              >
-                Product Backlog
-              </Button>
+              <div className="h-8 w-32 rounded-buttons bg-graphite/40 animate-gpu-pulse hidden sm:inline-block" />
+              <div className="h-8 w-28 rounded-buttons bg-graphite/40 animate-gpu-pulse hidden sm:inline-block" />
+              <div className="h-8 w-32 rounded-buttons bg-graphite/40 animate-gpu-pulse hidden sm:inline-block" />
             </>
-          )}
+          ) : (
+            <>
+              {activeProjectWithSprint && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => onOpenProject(activeProjectWithSprint.id, 'sprints')}
+                  icon={<CalendarRange className="w-3.5 h-3.5 text-signal-teal" />}
+                  title={`Abrir Sprint activo: ${activeProjectWithSprint.activeSprint?.name}`}
+                  aria-label={`Abrir Sprint activo: ${activeProjectWithSprint.activeSprint?.name}`}
+                >
+                  Abrir Sprint activo
+                </Button>
+              )}
 
-          {(isAdmin || effectiveRole === 'PRODUCT_OWNER') && firstProj && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() =>
-                onQuickCreateStory
-                  ? onQuickCreateStory(firstProj.id)
-                  : onOpenProject(firstProj.id, 'backlog')
-              }
-              icon={<Plus className="w-3.5 h-3.5" />}
-              title="Crear nueva historia de usuario con asistencia IA"
-            >
-              Crear historia
-            </Button>
+              {firstProj && (
+                <>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => onOpenProject(firstProj.id, 'kanban')}
+                    icon={<Kanban className="w-3.5 h-3.5 text-pulse-green" />}
+                    title="Abrir Tablero Kanban de historias y tareas técnicas"
+                    aria-label="Ir al Tablero Kanban"
+                  >
+                    Ir al Kanban
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => onOpenProject(firstProj.id, 'backlog')}
+                    icon={<ListTodo className="w-3.5 h-3.5 text-lavender" />}
+                    title="Explorar y priorizar el Product Backlog"
+                    aria-label="Explorar Product Backlog"
+                  >
+                    Product Backlog
+                  </Button>
+                </>
+              )}
+
+              {(isAdmin || effectiveRole === 'PRODUCT_OWNER') && firstProj && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() =>
+                    onQuickCreateStory
+                      ? onQuickCreateStory(firstProj.id)
+                      : onOpenProject(firstProj.id, 'backlog')
+                  }
+                  icon={<Plus className="w-3.5 h-3.5" />}
+                  title="Crear nueva historia de usuario con asistencia IA"
+                  aria-label="Crear historia de usuario"
+                >
+                  Crear historia
+                </Button>
+              )}
+            </>
           )}
         </div>
       </div>
@@ -731,13 +747,13 @@ export function DashboardView({
       {/* Middle Visual Analytics Row: Chart 1 (Burndown vs Burnup) & Chart 2 (Donut Distribución) */}
       {loading ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4" aria-busy="true" aria-label="Cargando gráficos analíticos">
-          <SkeletonChart className="lg:col-span-8" />
-          <SkeletonChart className="lg:col-span-4" />
+          <SkeletonChart className="lg:col-span-8 min-h-[365px]" />
+          <SkeletonChart className="lg:col-span-4 min-h-[365px]" />
         </div>
       ) : projects.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Chart 1: Sprint Burndown (Trabajo Restante) / Burnup */}
-          <div className="lg:col-span-8 p-5 rounded-2xl bg-carbon border border-graphite/80 shadow-[0_4px_24px_rgba(0,0,0,0.35)] flex flex-col justify-between">
+          <div className="lg:col-span-8 p-5 rounded-2xl bg-carbon border border-graphite/80 shadow-[0_4px_24px_rgba(0,0,0,0.35)] flex flex-col justify-between min-h-[365px]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
               <div>
                 <h3 className="text-[15px] font-semibold text-bone">Rendimiento y Burndown del Sprint</h3>
@@ -893,7 +909,7 @@ export function DashboardView({
           </div>
 
           {/* Chart 2: Donut Chart - Distribución del Trabajo (Perfect Geometry & Clean Legend) */}
-          <div className="lg:col-span-4 p-5 rounded-2xl bg-carbon border border-graphite/80 shadow-[0_4px_24px_rgba(0,0,0,0.35)] flex flex-col justify-between">
+          <div className="lg:col-span-4 p-5 rounded-2xl bg-carbon border border-graphite/80 shadow-[0_4px_24px_rgba(0,0,0,0.35)] flex flex-col justify-between min-h-[365px]">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-[15px] font-semibold text-bone">Distribución del Trabajo</h3>
               <span className="text-[11px] text-signal-teal font-mono">Consolidado</span>
@@ -1025,45 +1041,47 @@ export function DashboardView({
         </div>
       ) : null}
 
-      {/* Loading Skeletons */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <SkeletonCard key={i} />
-          ))}
+      {/* Projects Section (Stable Layout & Zero CLS) */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[16px] font-semibold text-bone flex items-center gap-2">
+            <FolderKanban className="w-4 h-4 text-signal-teal" />
+            <span>Espacios de Trabajo Scrum</span>
+          </h2>
+          <span className="text-[12px] text-fog">
+            {loading ? 'Cargando espacios...' : `${projects.length} registrados`}
+          </span>
         </div>
-      ) : projects.length === 0 ? (
-        <EmptyState
-          icon={<FolderOpen className="w-6 h-6" />}
-          title="Todavía no hay proyectos registrados"
-          description={
-            isAdmin
-              ? 'Crea tu primer proyecto Scrum para estructurar el Product Backlog, planificar Sprints y seguir el tablero Kanban.'
-              : 'Solicita a un Administrador que te asigne una membresía en un proyecto para empezar a colaborar.'
-          }
-          action={
-            isAdmin ? (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setCreateOpen(true)}
-                icon={<Plus className="w-3.5 h-3.5" />}
-              >
-                Crear primer proyecto
-              </Button>
-            ) : undefined
-          }
-        />
-      ) : (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[16px] font-semibold text-bone flex items-center gap-2">
-              <FolderKanban className="w-4 h-4 text-signal-teal" />
-              <span>Espacios de Trabajo Scrum</span>
-            </h2>
-            <span className="text-[12px] text-fog">{projects.length} registrados</span>
-          </div>
 
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" aria-busy="true" aria-label="Cargando espacios de trabajo">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <SkeletonProjectCard key={i} />
+            ))}
+          </div>
+        ) : projects.length === 0 ? (
+          <EmptyState
+            icon={<FolderOpen className="w-6 h-6" />}
+            title="Todavía no hay proyectos registrados"
+            description={
+              isAdmin
+                ? 'Crea tu primer proyecto Scrum para estructurar el Product Backlog, planificar Sprints y seguir el tablero Kanban.'
+                : 'Solicita a un Administrador que te asigne una membresía en un proyecto para empezar a colaborar.'
+            }
+            action={
+              isAdmin ? (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setCreateOpen(true)}
+                  icon={<Plus className="w-3.5 h-3.5" />}
+                >
+                  Crear primer proyecto
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {projects.map((project, index) => {
               const pct =
@@ -1223,8 +1241,8 @@ export function DashboardView({
               );
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Create Project Modal */}
       <Modal
