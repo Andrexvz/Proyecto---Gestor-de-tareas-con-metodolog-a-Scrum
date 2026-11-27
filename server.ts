@@ -159,6 +159,39 @@ async function startServer() {
     next();
   });
 
+  // Hybrid Bridge to Spring Boot Backend on Port 8080
+  app.use('/api/v1', async (req, res, next) => {
+    if (process.env.USE_LOCAL_STORE === 'true') {
+      return next();
+    }
+    const springBootUrl = `http://localhost:8080${req.originalUrl}`;
+    try {
+      const headers: Record<string, string> = {};
+      for (const [k, v] of Object.entries(req.headers)) {
+        if (k.toLowerCase() !== 'host' && v) {
+          headers[k] = Array.isArray(v) ? v.join(', ') : String(v);
+        }
+      }
+      const hasBody = ['POST', 'PUT', 'PATCH'].includes(req.method) && req.body && Object.keys(req.body).length > 0;
+      const resp = await fetch(springBootUrl, {
+        method: req.method,
+        headers,
+        body: hasBody ? JSON.stringify(req.body) : undefined,
+      });
+      res.status(resp.status);
+      resp.headers.forEach((val, key) => {
+        if (key.toLowerCase() !== 'content-encoding' && key.toLowerCase() !== 'transfer-encoding') {
+          res.setHeader(key, val);
+        }
+      });
+      const data = await resp.text();
+      res.send(data);
+    } catch {
+      // Spring Boot is not active -> fallback to Express store
+      next();
+    }
+  });
+
   // Healthcheck
   app.get('/api/v1/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });

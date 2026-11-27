@@ -4,6 +4,7 @@ import com.sena.scrum.model.enums.TaskStatus;
 import lombok.*;
 
 import java.time.OffsetDateTime;
+import java.util.Map;
 
 @Getter
 @Setter
@@ -27,4 +28,10 @@ public class TaskResponse {
     private Boolean hasActiveImpediment;
     private Integer commentsCount;
     private OffsetDateTime createdAt;
+
+    // Rich nested objects for MyWork / Unified Views
+    private Map<String, Object> assignee;
+    private Map<String, Object> story;
+    private Map<String, Object> project;
+    private Map<String, Object> sprint;
 }
