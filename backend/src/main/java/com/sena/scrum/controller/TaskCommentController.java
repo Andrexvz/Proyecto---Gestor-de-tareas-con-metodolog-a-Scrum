@@ -36,6 +36,9 @@ public class TaskCommentController {
             @PathVariable Long taskId,
             Authentication authentication
     ) {
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new org.springframework.security.authentication.InsufficientAuthenticationException("Usuario no autenticado");
+        }
         User currentUser = authService.getCurrentUser(authentication.getName());
         List<TaskCommentResponse> comments = commentService.getCommentsByTask(taskId, currentUser);
         return ResponseEntity.ok(Map.of("comments", comments));
@@ -48,6 +51,9 @@ public class TaskCommentController {
             @Valid @RequestBody TaskCommentRequest request,
             Authentication authentication
     ) {
+        if (authentication == null || !authentication.isAuthenticated() || "anonymousUser".equals(authentication.getPrincipal())) {
+            throw new org.springframework.security.authentication.InsufficientAuthenticationException("Usuario no autenticado");
+        }
         User currentUser = authService.getCurrentUser(authentication.getName());
         TaskCommentResponse comment = commentService.createComment(taskId, request, currentUser);
         TaskResponse task = taskService.getTaskById(taskId);

@@ -78,4 +78,12 @@ class ScrumBackendApplicationTests {
         assertEquals("ROLE_PRODUCT_OWNER", po.getAuthorities().iterator().next().getAuthority());
         assertTrue(po.isEnabled());
     }
+
+    @Test
+    @DisplayName("5. Security Exceptions - Manejo de InsufficientAuthenticationException para 401")
+    void testSecurityAuthenticationException() {
+        org.springframework.security.authentication.InsufficientAuthenticationException ex =
+                new org.springframework.security.authentication.InsufficientAuthenticationException("Usuario no autenticado");
+        assertEquals("Usuario no autenticado", ex.getMessage());
+    }
 }

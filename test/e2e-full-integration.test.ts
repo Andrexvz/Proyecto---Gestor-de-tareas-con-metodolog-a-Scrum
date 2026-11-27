@@ -280,4 +280,48 @@ describe('Agile Velocity - Auditoría e Integración Completa Sprint 3 (SENA)', 
     const ws = await bridgeWs.json();
     assert.equal(ws.project.code, 'CBA');
   });
+
+  it('Regresión Seguridad: GET /api/v1/auth/me y endpoints protegidos manejan 401 y no exponen 500 ni detalles internos', async () => {
+    // 1. GET /api/v1/auth/me sin token -> 401 Unauthorized
+    const noTokenRes = await fetch(`${API_BASE}/auth/me`);
+    assert.equal(noTokenRes.status, 401, 'GET /auth/me sin token debe responder 401');
+    const noTokenBody = await noTokenRes.text();
+    assert.ok(!noTokenBody.includes('500'), 'No debe retornar código 500');
+    assert.ok(!noTokenBody.includes('Cannot invoke'), 'No debe exponer excepciones internas Java');
+    assert.ok(!noTokenBody.includes('NullPointerException'), 'No debe exponer trazas de NullPointerException');
+
+    // 2. GET /api/v1/auth/me con token inválido -> 401 Unauthorized
+    const invalidTokenRes = await fetch(`${API_BASE}/auth/me`, {
+      headers: { Authorization: 'Bearer invalid-token-xyz-12345' },
+    });
+    assert.equal(invalidTokenRes.status, 401, 'GET /auth/me con token inválido debe responder 401');
+    const invalidBody = await invalidTokenRes.text();
+    assert.ok(!invalidBody.includes('500'), 'No debe retornar 500 con token inválido');
+    assert.ok(!invalidBody.includes('Cannot invoke'), 'No debe exponer excepciones internas');
+
+    // 3. GET /api/v1/auth/me con token válido -> 200 OK
+    const { token, user } = await loginUser('admin@velocity.dev');
+    const validRes = await fetch(`${API_BASE}/auth/me`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    assert.equal(validRes.status, 200, 'GET /auth/me con token válido debe responder 200');
+    const validData = await validRes.json();
+    assert.equal(validData.user.email, user.email);
+
+    // 4. Otros endpoints protegidos sin token -> 401 Unauthorized
+    const noTokenUsersTasks = await fetch(`${API_BASE}/users/me/tasks`);
+    assert.equal(noTokenUsersTasks.status, 401, 'GET /users/me/tasks sin token debe responder 401');
+
+    const noTokenAudit = await fetch(`${API_BASE}/audit-logs`);
+    assert.equal(noTokenAudit.status, 401, 'GET /audit-logs sin token debe responder 401');
+
+    const noTokenProjects = await fetch(`${API_BASE}/projects`);
+    assert.equal(noTokenProjects.status, 401, 'GET /projects sin token debe responder 401');
+
+    // 5. Verificación a través del proxy en puerto 3000
+    const bridgeNoToken = await fetch('http://localhost:3000/api/v1/auth/me');
+    assert.equal(bridgeNoToken.status, 401, 'GET :3000/api/v1/auth/me sin token debe responder 401');
+    const bridgeNoTokenBody = await bridgeNoToken.text();
+    assert.ok(!bridgeNoTokenBody.includes('500'), 'El bridge de frontend no debe recibir ni emitir 500');
+  });
 });
