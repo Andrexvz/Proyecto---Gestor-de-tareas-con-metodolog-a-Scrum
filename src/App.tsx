@@ -101,10 +101,10 @@ function WorkspaceApp() {
       nextRoute === 'dashboard'
         ? '/dashboard'
         : nextRoute === 'my-work'
-        ? '/my-work'
-        : !projectId
-        ? '/dashboard'
-        : `/projects/${projectId}/${nextRoute}`;
+          ? '/my-work'
+          : !projectId
+            ? '/dashboard'
+            : `/projects/${projectId}/${nextRoute}`;
     if (window.location.pathname !== nextUrl) {
       window.history.pushState({}, '', nextUrl);
     }
@@ -140,13 +140,13 @@ function WorkspaceApp() {
     setProjectsError('');
     try {
       const [projRes, usersRes, notifRes] = await Promise.all([
-        apiFetch<{ projects: ProjectSummary[] }>('/api/v1/projects'),
-        apiFetch<{ users: User[] }>('/api/v1/users'),
-        apiFetch<{ notifications: AppNotification[] }>('/api/v1/notifications'),
+        apiFetch<any>('/api/v1/projects'),
+        apiFetch<any>('/api/v1/users'),
+        apiFetch<any>('/api/v1/notifications'),
       ]);
-      setProjects(projRes.projects);
-      setUsers(usersRes.users);
-      setNotifications(notifRes.notifications);
+      setProjects(Array.isArray(projRes) ? projRes : (projRes?.projects || []));
+      setUsers(Array.isArray(usersRes) ? usersRes : (usersRes?.users || []));
+      setNotifications(Array.isArray(notifRes) ? notifRes : (notifRes?.notifications || []));
     } catch (err: any) {
       setProjectsError(err?.message || 'No se pudo conectar con el servidor');
     } finally {
@@ -393,9 +393,9 @@ function WorkspaceApp() {
         onQuickCreateStory={
           canCreateStory
             ? () => {
-                setEditingStory(null);
-                setStoryModalOpen(true);
-              }
+              setEditingStory(null);
+              setStoryModalOpen(true);
+            }
             : undefined
         }
       />

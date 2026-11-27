@@ -4,6 +4,7 @@ import com.sena.scrum.model.enums.StoryPriority;
 import lombok.*;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 
 @Getter
 @Setter
@@ -24,7 +25,7 @@ public class UserStoryResponse {
     private String code;
     private String title;
     private String description;
-    private String acceptanceCriteria;
+    private List<String> acceptanceCriteria;
     private StoryPriority priority;
     private Integer storyPoints;
     private Boolean isCompleted;

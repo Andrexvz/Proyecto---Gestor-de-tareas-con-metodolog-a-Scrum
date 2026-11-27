@@ -195,17 +195,48 @@ public class TaskService {
 
     private TaskResponse mapToResponse(Task task) {
         UserStory story = task.getUserStory();
-        Sprint sprint = story.getSprint();
+        Sprint sprint = story != null ? story.getSprint() : null;
+        com.sena.scrum.model.entity.Project project = story != null ? story.getProject() : null;
         User assignee = task.getAssignedTo();
 
         boolean hasActiveImpediment = !impedimentRepository.findByTaskIdAndStatus(task.getId(), ImpedimentStatus.OPEN).isEmpty();
         int commentsCount = commentRepository.findByTaskIdOrderByCreatedAtAsc(task.getId()).size();
 
+        java.util.Map<String, Object> assigneeMap = assignee != null ? java.util.Map.of(
+                "id", assignee.getId(),
+                "fullName", assignee.getFullName(),
+                "email", assignee.getEmail()
+        ) : null;
+
+        java.util.Map<String, Object> storyMap = story != null ? java.util.Map.of(
+                "id", story.getId(),
+                "code", story.getCode() != null ? story.getCode() : "",
+                "title", story.getTitle() != null ? story.getTitle() : "",
+                "priority", story.getPriority() != null ? story.getPriority().name() : "MEDIUM",
+                "storyPoints", story.getStoryPoints() != null ? story.getStoryPoints() : 0,
+                "isCompleted", Boolean.TRUE.equals(story.getIsCompleted())
+        ) : null;
+
+        java.util.Map<String, Object> projectMap = project != null ? java.util.Map.of(
+                "id", project.getId(),
+                "code", project.getCode() != null ? project.getCode() : "",
+                "name", project.getName() != null ? project.getName() : "",
+                "myRole", "DEVELOPER"
+        ) : null;
+
+        java.util.Map<String, Object> sprintMap = sprint != null ? java.util.Map.of(
+                "id", sprint.getId(),
+                "name", sprint.getName() != null ? sprint.getName() : "",
+                "status", sprint.getStatus() != null ? sprint.getStatus().name() : "PLANNED",
+                "startDate", sprint.getStartDate() != null ? sprint.getStartDate().toString() : "",
+                "endDate", sprint.getEndDate() != null ? sprint.getEndDate().toString() : ""
+        ) : null;
+
         return TaskResponse.builder()
                 .id(task.getId())
-                .userStoryId(story.getId())
-                .userStoryCode(story.getCode())
-                .userStoryTitle(story.getTitle())
+                .userStoryId(story != null ? story.getId() : null)
+                .userStoryCode(story != null ? story.getCode() : null)
+                .userStoryTitle(story != null ? story.getTitle() : null)
                 .sprintId(sprint != null ? sprint.getId() : null)
                 .sprintName(sprint != null ? sprint.getName() : null)
                 .assignedToId(assignee != null ? assignee.getId() : null)
@@ -217,6 +248,10 @@ public class TaskService {
                 .hasActiveImpediment(hasActiveImpediment)
                 .commentsCount(commentsCount)
                 .createdAt(task.getCreatedAt())
+                .assignee(assigneeMap)
+                .story(storyMap)
+                .project(projectMap)
+                .sprint(sprintMap)
                 .build();
     }
 }
