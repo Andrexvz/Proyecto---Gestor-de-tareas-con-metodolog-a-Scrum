@@ -26,6 +26,10 @@ export class ApiError extends Error {
   }
 }
 
+const API_BASE = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_API_BASE_URL)
+  ? String(import.meta.env.VITE_API_BASE_URL).replace(/\/$/, '')
+  : '';
+
 export async function apiFetch<T>(
   path: string,
   options: RequestInit & { signal?: AbortSignal; skipAuthRedirect?: boolean } = {}
@@ -39,7 +43,8 @@ export async function apiFetch<T>(
     headers.set('Authorization', `Bearer ${token}`);
   }
 
-  const response = await fetch(path, {
+  const url = path.startsWith('http') ? path : `${API_BASE}${path}`;
+  const response = await fetch(url, {
     ...options,
     headers,
   });

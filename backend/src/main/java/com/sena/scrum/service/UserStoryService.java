@@ -98,8 +98,6 @@ public class UserStoryService {
         if (request.getSprintId() != null) {
             Sprint sprint = sprintService.findEntityById(request.getSprintId());
             story.setSprint(sprint);
-        } else {
-            story.setSprint(null);
         }
 
         if (request.getEpicId() != null) {
@@ -109,9 +107,15 @@ public class UserStoryService {
         if (request.getCode() != null && !request.getCode().isBlank()) {
             story.setCode(request.getCode().toUpperCase().trim());
         }
-        story.setTitle(request.getTitle().trim());
-        story.setDescription(request.getDescription().trim());
-        story.setAcceptanceCriteria(request.getAcceptanceCriteria());
+        if (request.getTitle() != null && !request.getTitle().isBlank()) {
+            story.setTitle(request.getTitle().trim());
+        }
+        if (request.getDescription() != null) {
+            story.setDescription(request.getDescription().trim());
+        }
+        if (request.getAcceptanceCriteria() != null) {
+            story.setAcceptanceCriteria(request.getAcceptanceCriteria());
+        }
         if (request.getPriority() != null) {
             story.setPriority(request.getPriority());
         }
@@ -175,7 +179,7 @@ public class UserStoryService {
                 .code(story.getCode())
                 .title(story.getTitle())
                 .description(story.getDescription())
-                .acceptanceCriteria(story.getAcceptanceCriteria())
+                .acceptanceCriteria(parseCriteria(story.getAcceptanceCriteria()))
                 .priority(story.getPriority())
                 .storyPoints(story.getStoryPoints())
                 .isCompleted(story.getIsCompleted())
@@ -183,5 +187,13 @@ public class UserStoryService {
                 .totalTasks(totalTasks)
                 .completedTasks(completedTasks)
                 .build();
+    }
+
+    public static List<String> parseCriteria(String criteria) {
+        if (criteria == null || criteria.isBlank()) return java.util.List.of();
+        return java.util.Arrays.stream(criteria.split("\\r?\\n"))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(java.util.stream.Collectors.toList());
     }
 }

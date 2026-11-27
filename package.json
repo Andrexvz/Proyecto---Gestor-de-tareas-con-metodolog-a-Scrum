@@ -10,7 +10,7 @@
     "preview": "vite preview",
     "clean": "rm -rf dist server.js",
     "lint": "tsc --noEmit",
-    "test": "tsx --test test/tasks.test.ts test/ui-components.test.ts test/navigation.test.ts test/stage3-views.test.ts test/stage4-sprints-metrics.test.ts test/stage5-login-onboarding.test.ts test/stage6-audit-stabilization.test.ts test/stage7-production-readiness.test.ts test/metrics-audit.test.ts test/my-work-and-role-dashboard.test.ts test/epics-and-impediments.test.ts test/stage8-comments-closure-audit.test.ts"
+    "test": "tsx --test test/tasks.test.ts test/ui-components.test.ts test/navigation.test.ts test/stage3-views.test.ts test/stage4-sprints-metrics.test.ts test/stage5-login-onboarding.test.ts test/stage6-audit-stabilization.test.ts test/stage7-production-readiness.test.ts test/metrics-audit.test.ts test/my-work-and-role-dashboard.test.ts test/epics-and-impediments.test.ts test/stage8-comments-closure-audit.test.ts test/e2e-full-integration.test.ts"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.3.1",
