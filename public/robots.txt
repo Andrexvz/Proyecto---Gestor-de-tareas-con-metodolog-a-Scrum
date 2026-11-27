@@ -1,0 +1,4 @@
+# Agile Velocity - Private Scrum Management Platform
+# Rutas privadas protegidas contra indexacion de motores de busqueda
+User-agent: *
+Disallow: /

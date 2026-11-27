@@ -89,3 +89,52 @@ export function SkeletonCard({ className }: { className?: string }) {
     </div>
   );
 }
+
+export function SkeletonKpi({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        'p-5 rounded-2xl bg-carbon border border-graphite/80 min-h-[175px] flex flex-col justify-between',
+        className
+      )}
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <div className="flex items-start justify-between">
+        <SkeletonLoader variant="text" width={110} height={16} />
+        <SkeletonLoader variant="circle" width={32} height={32} />
+      </div>
+      <div className="space-y-2 mt-2">
+        <SkeletonLoader variant="text" width={70} height={30} />
+        <SkeletonLoader variant="text" width={140} height={12} />
+      </div>
+      <div className="mt-3 pt-2 border-t border-graphite/40">
+        <SkeletonLoader variant="text" width="100%" height={14} />
+      </div>
+    </div>
+  );
+}
+
+export function SkeletonChart({ className }: { className?: string }) {
+  return (
+    <div
+      className={cn(
+        'p-5 rounded-2xl bg-carbon border border-graphite/80 min-h-[350px] flex flex-col justify-between',
+        className
+      )}
+      aria-busy="true"
+      aria-live="polite"
+    >
+      <div className="flex items-center justify-between mb-4">
+        <SkeletonLoader variant="text" width={180} height={18} />
+        <SkeletonLoader variant="text" width={80} height={14} />
+      </div>
+      <div className="flex-1 w-full flex items-center justify-center my-4">
+        <SkeletonLoader variant="custom" className="w-full h-44 rounded-xl" />
+      </div>
+      <div className="pt-3 border-t border-graphite/40">
+        <SkeletonLoader variant="text" width="100%" height={12} />
+      </div>
+    </div>
+  );
+}

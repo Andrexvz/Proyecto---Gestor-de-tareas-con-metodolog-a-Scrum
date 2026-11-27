@@ -36,6 +36,8 @@ import {
   Badge,
   EmptyState,
   SkeletonCard,
+  SkeletonKpi,
+  SkeletonChart,
 } from './ui';
 import type { ProjectSummary, ScrumRole, User } from '../types/scrum';
 import type { ActiveRoute } from './AppShell';
@@ -566,7 +568,14 @@ export function DashboardView({
       )}
 
       {/* Top 4 KPI Statistics Cards Overview (Consistent Dimensions & Aligned Metrics) */}
-      {!loading && projects.length > 0 && (
+      <h2 className="sr-only">Métricas Clave del Proyecto</h2>
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" aria-busy="true" aria-label="Cargando métricas clave">
+          {[1, 2, 3, 4].map((i) => (
+            <SkeletonKpi key={i} />
+          ))}
+        </div>
+      ) : projects.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: Proyectos Activos */}
           <motion.div
@@ -717,10 +726,15 @@ export function DashboardView({
             </div>
           </motion.div>
         </div>
-      )}
+      ) : null}
 
       {/* Middle Visual Analytics Row: Chart 1 (Burndown vs Burnup) & Chart 2 (Donut Distribución) */}
-      {!loading && projects.length > 0 && (
+      {loading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4" aria-busy="true" aria-label="Cargando gráficos analíticos">
+          <SkeletonChart className="lg:col-span-8" />
+          <SkeletonChart className="lg:col-span-4" />
+        </div>
+      ) : projects.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Chart 1: Sprint Burndown (Trabajo Restante) / Burnup */}
           <div className="lg:col-span-8 p-5 rounded-2xl bg-carbon border border-graphite/80 shadow-[0_4px_24px_rgba(0,0,0,0.35)] flex flex-col justify-between">
@@ -1009,7 +1023,7 @@ export function DashboardView({
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Loading Skeletons */}
       {loading ? (
@@ -1117,9 +1131,9 @@ export function DashboardView({
                       onClick={() => onOpenProject(project.id, 'backlog')}
                       className="text-left block w-full group/btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-teal/50 rounded-inputs"
                     >
-                      <h2 className="font-display text-[17px] font-semibold text-bone group-hover/btn:text-paper group-hover/btn:translate-x-0.5 transition-all">
+                      <h3 className="font-display text-[17px] font-semibold text-bone group-hover/btn:text-paper group-hover/btn:translate-x-0.5 transition-all">
                         {project.name}
-                      </h2>
+                      </h3>
                       <p className="mt-1 text-[13px] text-mist leading-relaxed line-clamp-2">
                         {project.description || 'Sin descripción técnica registrada.'}
                       </p>

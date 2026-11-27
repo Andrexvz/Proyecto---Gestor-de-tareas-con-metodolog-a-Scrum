@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState, Suspense, lazy } from 'react';
 import { Plus } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -8,17 +8,32 @@ import { apiFetch } from './lib/api';
 import { LoginView } from './components/LoginView';
 import { AppShell, type ActiveRoute } from './components/AppShell';
 import { DashboardView } from './components/DashboardView';
-import { MyWorkView } from './components/MyWorkView';
-import { BacklogView } from './components/BacklogView';
-import { SprintsView } from './components/SprintsView';
-import { KanbanView } from './components/KanbanView';
-import { MetricsView } from './components/MetricsView';
-import { StoryModal } from './components/StoryModal';
-import { CommandPalette } from './components/CommandPalette';
-import { OnboardingModal } from './components/OnboardingModal';
-import { ThemeModal } from './components/ThemeModal';
-import { AuditLogModal } from './components/AuditLogModal';
 import { Button } from './components/ui';
+
+// Optimized code-splitting: Lazy load non-critical routes and modals
+const MyWorkView = lazy(() => import('./components/MyWorkView').then((m) => ({ default: m.MyWorkView })));
+const BacklogView = lazy(() => import('./components/BacklogView').then((m) => ({ default: m.BacklogView })));
+const SprintsView = lazy(() => import('./components/SprintsView').then((m) => ({ default: m.SprintsView })));
+const KanbanView = lazy(() => import('./components/KanbanView').then((m) => ({ default: m.KanbanView })));
+const MetricsView = lazy(() => import('./components/MetricsView').then((m) => ({ default: m.MetricsView })));
+const StoryModal = lazy(() => import('./components/StoryModal').then((m) => ({ default: m.StoryModal })));
+const CommandPalette = lazy(() => import('./components/CommandPalette').then((m) => ({ default: m.CommandPalette })));
+const OnboardingModal = lazy(() => import('./components/OnboardingModal').then((m) => ({ default: m.OnboardingModal })));
+const ThemeModal = lazy(() => import('./components/ThemeModal').then((m) => ({ default: m.ThemeModal })));
+const AuditLogModal = lazy(() => import('./components/AuditLogModal').then((m) => ({ default: m.AuditLogModal })));
+
+function ViewFallback() {
+  return (
+    <div className="w-full p-6 space-y-4" aria-busy="true" aria-label="Cargando módulo...">
+      <div className="h-8 w-60 bg-carbon rounded-inputs border border-graphite/60 animate-pulse" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+        <div className="h-44 bg-carbon rounded-cards border border-graphite/60 animate-pulse" />
+        <div className="h-44 bg-carbon rounded-cards border border-graphite/60 animate-pulse" />
+        <div className="h-44 bg-carbon rounded-cards border border-graphite/60 animate-pulse" />
+      </div>
+    </div>
+  );
+}
 import type {
   AppNotification,
   Epic,
@@ -303,118 +318,130 @@ function WorkspaceApp() {
             transition={{ duration: 0.16, ease: 'easeOut' }}
             className="w-full"
           >
-            {route === 'my-work' ? (
-              <MyWorkView onNavigate={navigate} />
-            ) : route === 'dashboard' || !currentProject ? (
-              <DashboardView
-                projects={projects}
-                users={users}
-                loading={projectsLoading}
-                loadError={projectsError}
-                onRetry={loadDashboardData}
-                onOpenProject={(pid, target = 'backlog') => navigate(target, pid)}
-                onRefreshProjects={loadDashboardData}
-                onNavigate={navigate}
-                onQuickCreateStory={(pid) => {
-                  if (pid) setSelectedProjectId(pid);
-                  setEditingStory(null);
-                  setStoryModalOpen(true);
-                }}
-              />
-            ) : route === 'backlog' ? (
-              <BacklogView
-                project={currentProject}
-                sprints={sprints}
-                stories={stories}
-                tasks={tasks}
-                epics={epics}
-                loading={workspaceLoading}
-                onNewStory={() => {
-                  setEditingStory(null);
-                  setStoryModalOpen(true);
-                }}
-                onEditStory={(st) => {
-                  setEditingStory(st);
-                  setStoryModalOpen(true);
-                }}
-                onGoToSprints={() => navigate('sprints', currentProject.id)}
-                onRefresh={refreshAll}
-              />
-            ) : route === 'sprints' ? (
-              <SprintsView
-                project={currentProject}
-                sprints={sprints}
-                stories={stories}
-                onGoToKanban={() => navigate('kanban', currentProject.id)}
-                onRefresh={refreshAll}
-              />
-            ) : route === 'kanban' ? (
-              <KanbanView
-                project={currentProject}
-                sprints={sprints}
-                stories={stories}
-                tasks={tasks}
-                allUsers={users}
-                loading={workspaceLoading}
-                onGoToSprints={() => navigate('sprints', currentProject.id)}
-                onRefresh={refreshAll}
-              />
-            ) : (
-              <MetricsView
-                project={currentProject}
-                metrics={metrics}
-                tasks={tasks}
-                sprints={sprints}
-                stories={stories}
-              />
-            )}
+            <Suspense fallback={<ViewFallback />}>
+              {route === 'my-work' ? (
+                <MyWorkView onNavigate={navigate} />
+              ) : route === 'dashboard' || !currentProject ? (
+                <DashboardView
+                  projects={projects}
+                  users={users}
+                  loading={projectsLoading}
+                  loadError={projectsError}
+                  onRetry={loadDashboardData}
+                  onOpenProject={(pid, target = 'backlog') => navigate(target, pid)}
+                  onRefreshProjects={loadDashboardData}
+                  onNavigate={navigate}
+                  onQuickCreateStory={(pid) => {
+                    if (pid) setSelectedProjectId(pid);
+                    setEditingStory(null);
+                    setStoryModalOpen(true);
+                  }}
+                />
+              ) : route === 'backlog' ? (
+                <BacklogView
+                  project={currentProject}
+                  sprints={sprints}
+                  stories={stories}
+                  tasks={tasks}
+                  epics={epics}
+                  loading={workspaceLoading}
+                  onNewStory={() => {
+                    setEditingStory(null);
+                    setStoryModalOpen(true);
+                  }}
+                  onEditStory={(st) => {
+                    setEditingStory(st);
+                    setStoryModalOpen(true);
+                  }}
+                  onGoToSprints={() => navigate('sprints', currentProject.id)}
+                  onRefresh={refreshAll}
+                />
+              ) : route === 'sprints' ? (
+                <SprintsView
+                  project={currentProject}
+                  sprints={sprints}
+                  stories={stories}
+                  onGoToKanban={() => navigate('kanban', currentProject.id)}
+                  onRefresh={refreshAll}
+                />
+              ) : route === 'kanban' ? (
+                <KanbanView
+                  project={currentProject}
+                  sprints={sprints}
+                  stories={stories}
+                  tasks={tasks}
+                  allUsers={users}
+                  loading={workspaceLoading}
+                  onGoToSprints={() => navigate('sprints', currentProject.id)}
+                  onRefresh={refreshAll}
+                />
+              ) : (
+                <MetricsView
+                  project={currentProject}
+                  metrics={metrics}
+                  tasks={tasks}
+                  sprints={sprints}
+                  stories={stories}
+                />
+              )}
+            </Suspense>
           </motion.div>
         </AnimatePresence>
       </AppShell>
 
-      {currentProject && (
-        <StoryModal
-          open={storyModalOpen}
-          projectId={currentProject.id}
-          epics={epics}
-          canUseAi={canUseAi}
-          editingStory={editingStory}
-          onClose={() => setStoryModalOpen(false)}
-          onSaved={refreshAll}
-        />
-      )}
+      <Suspense fallback={null}>
+        {currentProject && storyModalOpen && (
+          <StoryModal
+            open={storyModalOpen}
+            projectId={currentProject.id}
+            epics={epics}
+            canUseAi={canUseAi}
+            editingStory={editingStory}
+            onClose={() => setStoryModalOpen(false)}
+            onSaved={refreshAll}
+          />
+        )}
 
-      <CommandPalette
-        open={commandOpen}
-        projects={projects}
-        currentProject={currentProject}
-        onClose={() => setCommandOpen(false)}
-        onNavigate={(nextRoute, pid) => navigate(nextRoute, pid)}
-        onQuickCreateStory={
-          canCreateStory
-            ? () => {
-              setEditingStory(null);
-              setStoryModalOpen(true);
+        {commandOpen && (
+          <CommandPalette
+            open={commandOpen}
+            projects={projects}
+            currentProject={currentProject}
+            onClose={() => setCommandOpen(false)}
+            onNavigate={(nextRoute, pid) => navigate(nextRoute, pid)}
+            onQuickCreateStory={
+              canCreateStory
+                ? () => {
+                  setEditingStory(null);
+                  setStoryModalOpen(true);
+                }
+                : undefined
             }
-            : undefined
-        }
-      />
+          />
+        )}
 
-      <OnboardingModal
-        open={onboardingOpen}
-        user={user}
-        onClose={() => setOnboardingOpen(false)}
-      />
+        {onboardingOpen && (
+          <OnboardingModal
+            open={onboardingOpen}
+            user={user}
+            onClose={() => setOnboardingOpen(false)}
+          />
+        )}
 
-      <ThemeModal
-        open={themeModalOpen}
-        onClose={() => setThemeModalOpen(false)}
-      />
+        {themeModalOpen && (
+          <ThemeModal
+            open={themeModalOpen}
+            onClose={() => setThemeModalOpen(false)}
+          />
+        )}
 
-      <AuditLogModal
-        open={auditModalOpen}
-        onClose={() => setAuditModalOpen(false)}
-      />
+        {auditModalOpen && (
+          <AuditLogModal
+            open={auditModalOpen}
+            onClose={() => setAuditModalOpen(false)}
+          />
+        )}
+      </Suspense>
     </>
   );
 }
