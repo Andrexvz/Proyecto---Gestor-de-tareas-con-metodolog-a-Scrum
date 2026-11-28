@@ -1,0 +1,4 @@
+# Agile Velocity - Scrum Project Management Platform
+User-agent: *
+Allow: /
+Disallow: /api/

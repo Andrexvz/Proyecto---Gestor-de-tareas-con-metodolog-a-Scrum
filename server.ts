@@ -131,7 +131,10 @@ async function startServer() {
   app.use(express.json({ limit: '1mb' }));
 
   // Modern Content-Security-Policy & Defensive Headers (OWASP)
-  const isProd = process.env.NODE_ENV === 'production';
+  const isProd =
+    process.env.NODE_ENV === 'production' ||
+    process.argv.includes('--prod') ||
+    process.argv.includes('--production');
   const cspDirectives = [
     "default-src 'self'",
     isProd
@@ -195,6 +198,12 @@ async function startServer() {
   // Healthcheck
   app.get('/api/v1/health', (_req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  // Explicit robots.txt endpoint for SEO & privacy compliance
+  app.get('/robots.txt', (_req, res) => {
+    res.type('text/plain');
+    res.send('# Agile Velocity - Scrum Project Management Platform\nUser-agent: *\nAllow: /\nDisallow: /api/\n');
   });
 
   // --- AUTH ---
@@ -1183,7 +1192,7 @@ async function startServer() {
   });
 
   // Vite dev middleware or static prod serving
-  if (process.env.NODE_ENV !== 'production') {
+  if (!isProd) {
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
@@ -1191,8 +1200,21 @@ async function startServer() {
     app.use(vite.middlewares);
   } else {
     const distPath = path.resolve(process.cwd(), 'dist');
-    app.use(express.static(distPath));
+    app.use(
+      express.static(distPath, {
+        maxAge: '1y',
+        immutable: true,
+        setHeaders: (res, filePath) => {
+          if (filePath.endsWith('.html')) {
+            res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+          } else if (filePath.includes('assets')) {
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          }
+        },
+      })
+    );
     app.get('*', (_req, res) => {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
