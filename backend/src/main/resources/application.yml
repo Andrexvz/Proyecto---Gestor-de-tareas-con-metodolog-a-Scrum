@@ -36,3 +36,34 @@ springdoc:
     path: /swagger-ui/index.html
     tags-sorter: alpha
     operations-sorter: alpha
+
+agile:
+  ai:
+    provider: ${AI_PROVIDER:auto}
+    gemini-api-key: ${GEMINI_API_KEY:}
+    gemini-base-url: ${GEMINI_BASE_URL:https://generativelanguage.googleapis.com/v1beta}
+    gemini-model-fast: ${AI_MODEL_FAST:gemini-2.5-flash}
+    gemini-model-deep: ${AI_MODEL_DEEP:gemini-2.5-pro}
+    groq-api-key: ${GROQ_API_KEY:}
+    groq-base-url: ${GROQ_BASE_URL:https://api.groq.com/openai/v1}
+    groq-model-fast: ${GROQ_MODEL_FAST:openai/gpt-oss-20b}
+    groq-model-deep: ${GROQ_MODEL_DEEP:openai/gpt-oss-120b}
+    openai-api-key: ${OPENAI_API_KEY:}
+    openai-base-url: ${OPENAI_BASE_URL:https://api.openai.com/v1}
+    openai-model-fast: ${OPENAI_MODEL_FAST:gpt-4o-mini}
+    openai-model-deep: ${OPENAI_MODEL_DEEP:gpt-4o}
+    ollama-base-url: ${OLLAMA_BASE_URL:http://localhost:11434/v1}
+    ollama-enabled: ${OLLAMA_ENABLED:false}
+    ollama-model-fast: ${OLLAMA_MODEL_FAST:qwen2.5:3b}
+    ollama-model-deep: ${OLLAMA_MODEL_DEEP:qwen3:4b}
+    ollama-keep-alive: ${OLLAMA_KEEP_ALIVE:15m}
+    ollama-num-thread: ${OLLAMA_NUM_THREAD:8}
+    ollama-num-ctx-fast: ${OLLAMA_NUM_CTX_FAST:2048}
+    ollama-num-ctx-deep: ${OLLAMA_NUM_CTX_DEEP:3072}
+    timeout-seconds: ${AI_TIMEOUT_SECONDS:90}
+    fast-timeout-seconds: ${AI_FAST_TIMEOUT_SECONDS:45}
+    max-retries: ${AI_MAX_RETRIES:1}
+    max-requests-per-minute-per-user: ${AI_RPM_LIMIT:20}
+    daily-token-budget-per-user: ${AI_DAILY_TOKEN_BUDGET:100000}
+    max-concurrent-per-user: ${AI_MAX_CONCURRENT:2}
+    max-global-concurrent-generations: ${AI_MAX_GLOBAL_CONCURRENT:1}

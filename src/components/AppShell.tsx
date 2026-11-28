@@ -39,6 +39,7 @@ interface AppShellProps {
   onOpenOnboarding?: () => void;
   onOpenThemeModal?: () => void;
   onOpenAuditModal?: () => void;
+  onOpenAiCopilot?: () => void;
   primaryAction?: React.ReactNode;
   children?: React.ReactNode;
 }
@@ -54,6 +55,7 @@ export function AppShell({
   onOpenOnboarding,
   onOpenThemeModal,
   onOpenAuditModal,
+  onOpenAiCopilot,
   primaryAction,
   children,
 }: AppShellProps) {
@@ -605,6 +607,20 @@ export function AppShell({
                 {isMac ? '⌘K' : 'Ctrl K'}
               </kbd>
             </button>
+
+            {/* Global Agile Velocity AI Trigger */}
+            {onOpenAiCopilot && (
+              <button
+                type="button"
+                onClick={onOpenAiCopilot}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-inputs bg-iris-violet/15 border border-iris-violet/40 hover:bg-iris-violet/25 text-[12px] font-medium text-paper transition-all whitespace-nowrap shrink-0 shadow-[0_0_12px_rgba(168,85,247,0.2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-teal/50"
+                title="Abrir Agile Velocity AI"
+                aria-label="Abrir Agile Velocity AI"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-signal-teal" />
+                <span className="hidden sm:inline">Agile Velocity AI</span>
+              </button>
+            )}
 
             {/* Theme Customization Button */}
             {onOpenThemeModal && (

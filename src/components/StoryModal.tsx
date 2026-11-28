@@ -115,23 +115,42 @@ export function StoryModal({
     setAiGenerating(true);
 
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 9000);
+    const timer = setTimeout(() => controller.abort(), 20000);
 
     try {
-      const res = await apiFetch<{ draft: AiGeneratedStory }>('/api/v1/ai/generate-story', {
+      const res = await apiFetch<{
+        draft: AiGeneratedStory & {
+          suggestedStoryPoints?: number;
+          suggestedPriority?: StoryPriority;
+          recommendedEpicId?: number | null;
+          improvements?: string[];
+          dependencies?: string[];
+        };
+      }>('/api/v1/ai/generate-story', {
         method: 'POST',
         body: JSON.stringify({ prompt: seedText, projectId }),
         signal: controller.signal,
       });
 
-      const { role, action, benefit, acceptanceCriteria } = res.draft;
+      const {
+        role,
+        action,
+        benefit,
+        acceptanceCriteria,
+        suggestedStoryPoints,
+        suggestedPriority,
+        recommendedEpicId,
+      } = res.draft;
       setDescription(`Como ${role}, quiero ${action}, para ${benefit}.`);
       setCriteria(acceptanceCriteria.length > 0 ? acceptanceCriteria : ['']);
+      if (suggestedStoryPoints !== undefined) setStoryPoints(String(suggestedStoryPoints));
+      if (suggestedPriority) setPriority(suggestedPriority);
+      if (recommendedEpicId !== undefined && recommendedEpicId !== null) setEpicId(recommendedEpicId);
       setAiHighlighted(true);
-      showToast('Borrador generado con Asistencia IA. Puedes afinarlo antes de guardar.', 'info');
-    } catch {
+      showToast('Borrador completo generado con Agile Velocity AI. Revisa y ajusta antes de guardar.', 'info');
+    } catch (err: any) {
       showToast(
-        'El asistente de IA no está disponible temporalmente. Puedes continuar redactando manualmente.',
+        err?.message || 'El proveedor de IA no está configurado o no responde. Puedes continuar redactando manualmente.',
         'warning'
       );
     } finally {
