@@ -128,7 +128,13 @@ async function startServer() {
   const app = express();
   app.disable('x-powered-by');
   app.set('trust proxy', 1);
-  app.use(express.json({ limit: '1mb' }));
+  app.use((req, res, next) => {
+    const ct = req.headers['content-type'] || '';
+    if (ct.includes('multipart/form-data')) {
+      return next();
+    }
+    express.json({ limit: '2mb' })(req, res, next);
+  });
 
   // Modern Content-Security-Policy & Defensive Headers (OWASP)
   const isProd =
@@ -162,7 +168,7 @@ async function startServer() {
     next();
   });
 
-  // Hybrid Bridge to Spring Boot Backend on Port 8080
+  // Hybrid Bridge to Spring Boot Backend on Port 8080 (supports SSE streaming & multipart uploads)
   app.use('/api/v1', async (req, res, next) => {
     if (process.env.USE_LOCAL_STORE === 'true') {
       return next();
@@ -171,15 +177,36 @@ async function startServer() {
     try {
       const headers: Record<string, string> = {};
       for (const [k, v] of Object.entries(req.headers)) {
-        if (k.toLowerCase() !== 'host' && v) {
+        const lower = k.toLowerCase();
+        if (lower !== 'host' && lower !== 'content-length' && lower !== 'expect' && lower !== 'connection' && v) {
           headers[k] = Array.isArray(v) ? v.join(', ') : String(v);
         }
       }
-      const hasBody = ['POST', 'PUT', 'PATCH'].includes(req.method) && req.body && Object.keys(req.body).length > 0;
+      const ct = req.headers['content-type'] || '';
+      let bodyToSend: any = undefined;
+      if (['POST', 'PUT', 'PATCH'].includes(req.method)) {
+        if (ct.includes('multipart/form-data')) {
+          const chunks: Buffer[] = [];
+          for await (const chunk of req) {
+            chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+          }
+          bodyToSend = Buffer.concat(chunks);
+        } else if (req.body && Object.keys(req.body).length > 0) {
+          bodyToSend = JSON.stringify(req.body);
+        }
+      }
+      const abortController = new AbortController();
+      res.on('close', () => {
+        if (!res.writableFinished) {
+          abortController.abort();
+        }
+      });
+
       const resp = await fetch(springBootUrl, {
         method: req.method,
         headers,
-        body: hasBody ? JSON.stringify(req.body) : undefined,
+        body: bodyToSend,
+        signal: abortController.signal,
       });
       res.status(resp.status);
       resp.headers.forEach((val, key) => {
@@ -187,9 +214,36 @@ async function startServer() {
           res.setHeader(key, val);
         }
       });
+      const respCt = resp.headers.get('content-type') || '';
+      if (respCt.includes('text/event-stream') && resp.body) {
+        res.setHeader('Cache-Control', 'no-cache, no-transform');
+        res.setHeader('Connection', 'keep-alive');
+        res.setHeader('X-Accel-Buffering', 'no');
+        res.flushHeaders?.();
+        const reader = resp.body.getReader();
+        try {
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            if (!res.writableEnded) {
+              res.write(Buffer.from(value));
+            }
+          }
+        } finally {
+          reader.cancel().catch(() => {});
+          if (!res.writableEnded) {
+            res.end();
+          }
+        }
+        return;
+      }
       const data = await resp.text();
       res.send(data);
-    } catch {
+    } catch (err: any) {
+      if (err?.name === 'AbortError' || res.headersSent) {
+        if (!res.writableEnded) res.end();
+        return;
+      }
       // Spring Boot is not active -> fallback to Express store
       next();
     }

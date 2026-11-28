@@ -21,6 +21,7 @@ const CommandPalette = lazy(() => import('./components/CommandPalette').then((m)
 const OnboardingModal = lazy(() => import('./components/OnboardingModal').then((m) => ({ default: m.OnboardingModal })));
 const ThemeModal = lazy(() => import('./components/ThemeModal').then((m) => ({ default: m.ThemeModal })));
 const AuditLogModal = lazy(() => import('./components/AuditLogModal').then((m) => ({ default: m.AuditLogModal })));
+const AiCopilotDrawer = lazy(() => import('./components/ai/AiCopilotDrawer'));
 
 function ViewFallback() {
   return (
@@ -92,6 +93,8 @@ function WorkspaceApp() {
   const [onboardingOpen, setOnboardingOpen] = useState(false);
   const [themeModalOpen, setThemeModalOpen] = useState(false);
   const [auditModalOpen, setAuditModalOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState<string | null>(null);
 
   // Auto-launch onboarding on first login if not completed
   useEffect(() => {
@@ -307,6 +310,10 @@ function WorkspaceApp() {
         onOpenOnboarding={() => setOnboardingOpen(true)}
         onOpenThemeModal={() => setThemeModalOpen(true)}
         onOpenAuditModal={() => setAuditModalOpen(true)}
+        onOpenAiCopilot={() => {
+          setAiPrompt(null);
+          setAiOpen(true);
+        }}
         primaryAction={primaryHeaderAction}
       >
         <AnimatePresence mode="wait">
@@ -439,6 +446,18 @@ function WorkspaceApp() {
           <AuditLogModal
             open={auditModalOpen}
             onClose={() => setAuditModalOpen(false)}
+          />
+        )}
+
+        {aiOpen && (
+          <AiCopilotDrawer
+            open={aiOpen}
+            onClose={() => setAiOpen(false)}
+            activeProjectId={currentProject?.id ?? null}
+            activeProjectCode={currentProject?.code ?? null}
+            currentScreen={typeof window !== 'undefined' ? window.location.pathname : '/dashboard'}
+            initialPrompt={aiPrompt}
+            onActionExecuted={refreshAll}
           />
         )}
       </Suspense>
