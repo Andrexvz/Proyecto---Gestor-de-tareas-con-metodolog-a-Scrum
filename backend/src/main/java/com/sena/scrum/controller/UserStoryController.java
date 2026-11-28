@@ -1,10 +1,12 @@
 package com.sena.scrum.controller;
 
+import com.sena.scrum.ai.provider.AiProviderException;
+import com.sena.scrum.ai.service.AiCopilotService;
 import com.sena.scrum.model.dto.AiStoryGenerateRequest;
-import com.sena.scrum.model.dto.AiStoryGenerateResponse;
 import com.sena.scrum.model.dto.UserStoryRequest;
 import com.sena.scrum.model.dto.UserStoryResponse;
-import com.sena.scrum.service.AiStoryService;
+import com.sena.scrum.model.entity.User;
+import com.sena.scrum.service.AuthService;
 import com.sena.scrum.service.UserStoryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -14,6 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -26,7 +29,8 @@ import java.util.Map;
 public class UserStoryController {
 
     private final UserStoryService userStoryService;
-    private final AiStoryService aiStoryService;
+    private final AiCopilotService aiCopilotService;
+    private final AuthService authService;
 
     @GetMapping("/api/v1/stories/project/{projectId}")
     @Operation(summary = "Listar todas las historias de un proyecto", description = "Retorna todas las historias asociadas a un proyecto sin importar su Sprint.")
@@ -68,18 +72,14 @@ public class UserStoryController {
 
     @PostMapping({"/api/v1/stories/ai-generate", "/api/v1/ai/generate-story"})
     @PreAuthorize("hasAnyRole('ADMINISTRADOR', 'PRODUCT_OWNER', 'SCRUM_MASTER')")
-    @Operation(summary = "Generar Historia y Criterios Gherkin con IA", description = "Transforma una necesidad de negocio en formato estándar Scrum con 3 escenarios Gherkin.")
-    public ResponseEntity<Map<String, Object>> generateWithAi(@Valid @RequestBody AiStoryGenerateRequest request) {
-        AiStoryGenerateResponse response = aiStoryService.generateStoryWithAi(request);
-        return ResponseEntity.ok(Map.of(
-                "draft", Map.of(
-                        "role", request.getUserRole() != null ? request.getUserRole() : "usuario del sistema",
-                        "action", response.getTitle() != null ? response.getTitle() : request.getPrompt(),
-                        "benefit", "agilizar la entrega de valor",
-                        "acceptanceCriteria", response.getGherkinCriteria() != null ? response.getGherkinCriteria() : List.of()
-                ),
-                "response", response
-        ));
+    @Operation(summary = "Generar Historia y Criterios Gherkin con IA", description = "Transforma una necesidad de negocio mediante el proveedor de IA configurado.")
+    public ResponseEntity<?> generateWithAi(@Valid @RequestBody AiStoryGenerateRequest request, Authentication auth) {
+        try {
+            User user = authService.getCurrentUser(auth.getName());
+            return ResponseEntity.ok(aiCopilotService.assistStory(user, request.getProjectId(), request.getPrompt(), request.getUserRole()));
+        } catch (AiProviderException ex) {
+            return ResponseEntity.status(ex.getStatusCode()).body(Map.of("error", ex.getMessage(), "code", ex.getCode()));
+        }
     }
 
     @RequestMapping(value = "/api/v1/stories/{id}", method = {RequestMethod.PUT, RequestMethod.PATCH})
