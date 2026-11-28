@@ -7,15 +7,24 @@ export function setOnUnauthorized(handler: (message?: string) => void) {
 }
 
 export function getStoredToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  try {
+    if (typeof localStorage !== 'undefined') {
+      return localStorage.getItem(TOKEN_KEY);
+    }
+  } catch {}
+  return null;
 }
 
 export function setStoredToken(token: string | null) {
-  if (token) {
-    localStorage.setItem(TOKEN_KEY, token);
-  } else {
-    localStorage.removeItem(TOKEN_KEY);
-  }
+  try {
+    if (typeof localStorage !== 'undefined') {
+      if (token) {
+        localStorage.setItem(TOKEN_KEY, token);
+      } else {
+        localStorage.removeItem(TOKEN_KEY);
+      }
+    }
+  } catch {}
 }
 
 export class ApiError extends Error {

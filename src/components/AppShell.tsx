@@ -143,6 +143,7 @@ export function AppShell({
                 onClick={() => onNavigate('dashboard')}
                 className="w-10 h-10 rounded-xl bg-gradient-to-tr from-signal-teal via-iris-violet to-pulse-green p-[1.5px] shadow-[0_0_12px_rgba(25,217,232,0.35)] flex items-center justify-center shrink-0 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-teal"
                 title="Agile Velocity · Inicio"
+                aria-label="Agile Velocity · Inicio"
               >
                 <div className="w-full h-full bg-void rounded-[10px] flex items-center justify-center">
                   <Zap className="w-4 h-4 text-signal-teal" />

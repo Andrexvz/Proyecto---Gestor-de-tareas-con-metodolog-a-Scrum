@@ -36,6 +36,9 @@ import {
   Badge,
   EmptyState,
   SkeletonCard,
+  SkeletonKpi,
+  SkeletonChart,
+  SkeletonProjectCard,
 } from './ui';
 import type { ProjectSummary, ScrumRole, User } from '../types/scrum';
 import type { ActiveRoute } from './AppShell';
@@ -295,10 +298,12 @@ export function DashboardView({
   const effectiveRole = useMemo(() => {
     if (rolePerspective !== 'AUTO') return rolePerspective;
     if (isAdmin) return 'ADMIN';
+    if (user?.email?.includes('master') || user?.title?.toLowerCase().includes('scrum')) return 'SCRUM_MASTER';
+    if (user?.email?.includes('po') || user?.title?.toLowerCase().includes('product')) return 'PRODUCT_OWNER';
     if (projects.some((p) => p.myRole === 'PRODUCT_OWNER')) return 'PRODUCT_OWNER';
     if (projects.some((p) => p.myRole === 'SCRUM_MASTER')) return 'SCRUM_MASTER';
     return 'DEVELOPER';
-  }, [rolePerspective, isAdmin, projects]);
+  }, [rolePerspective, isAdmin, user, projects]);
 
   // Donut chart distribution calculations
   const donutData = useMemo(() => {
@@ -446,65 +451,80 @@ export function DashboardView({
             }
             icon={<CheckSquare className="w-3.5 h-3.5 text-signal-teal" />}
             title="Consultar todas las tareas asignadas en tus proyectos"
+            aria-label="Ver mis tareas asignadas"
           >
             Ver mis tareas
           </Button>
 
-          {activeProjectWithSprint && (
-            <Button
-              variant="secondary"
-              size="sm"
-              onClick={() => onOpenProject(activeProjectWithSprint.id, 'sprints')}
-              icon={<CalendarRange className="w-3.5 h-3.5 text-signal-teal" />}
-              title={`Abrir Sprint activo: ${activeProjectWithSprint.activeSprint?.name}`}
-            >
-              Abrir Sprint activo
-            </Button>
-          )}
-
-          {firstProj && (
+          {loading ? (
             <>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => onOpenProject(firstProj.id, 'kanban')}
-                icon={<Kanban className="w-3.5 h-3.5 text-pulse-green" />}
-                title="Abrir Tablero Kanban de historias y tareas técnicas"
-              >
-                Ir al Kanban
-              </Button>
-              <Button
-                variant="secondary"
-                size="sm"
-                onClick={() => onOpenProject(firstProj.id, 'backlog')}
-                icon={<ListTodo className="w-3.5 h-3.5 text-lavender" />}
-                title="Explorar y priorizar el Product Backlog"
-              >
-                Product Backlog
-              </Button>
+              <div className="h-8 w-32 rounded-buttons bg-graphite/40 animate-gpu-pulse" />
+              <div className="h-8 w-28 rounded-buttons bg-graphite/40 animate-gpu-pulse" />
+              <div className="h-8 w-32 rounded-buttons bg-graphite/40 animate-gpu-pulse" />
             </>
-          )}
+          ) : (
+            <>
+              {activeProjectWithSprint && (
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => onOpenProject(activeProjectWithSprint.id, 'sprints')}
+                  icon={<CalendarRange className="w-3.5 h-3.5 text-signal-teal" />}
+                  title={`Abrir Sprint activo: ${activeProjectWithSprint.activeSprint?.name}`}
+                  aria-label={`Abrir Sprint activo: ${activeProjectWithSprint.activeSprint?.name}`}
+                >
+                  Abrir Sprint activo
+                </Button>
+              )}
 
-          {(isAdmin || effectiveRole === 'PRODUCT_OWNER') && firstProj && (
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={() =>
-                onQuickCreateStory
-                  ? onQuickCreateStory(firstProj.id)
-                  : onOpenProject(firstProj.id, 'backlog')
-              }
-              icon={<Plus className="w-3.5 h-3.5" />}
-              title="Crear nueva historia de usuario con asistencia IA"
-            >
-              Crear historia
-            </Button>
+              {firstProj && (
+                <>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => onOpenProject(firstProj.id, 'kanban')}
+                    icon={<Kanban className="w-3.5 h-3.5 text-pulse-green" />}
+                    title="Abrir Tablero Kanban de historias y tareas técnicas"
+                    aria-label="Ir al Tablero Kanban"
+                  >
+                    Ir al Kanban
+                  </Button>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    onClick={() => onOpenProject(firstProj.id, 'backlog')}
+                    icon={<ListTodo className="w-3.5 h-3.5 text-lavender" />}
+                    title="Explorar y priorizar el Product Backlog"
+                    aria-label="Explorar Product Backlog"
+                  >
+                    Product Backlog
+                  </Button>
+                </>
+              )}
+
+              {(isAdmin || effectiveRole === 'PRODUCT_OWNER') && firstProj && (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() =>
+                    onQuickCreateStory
+                      ? onQuickCreateStory(firstProj.id)
+                      : onOpenProject(firstProj.id, 'backlog')
+                  }
+                  icon={<Plus className="w-3.5 h-3.5" />}
+                  title="Crear nueva historia de usuario con asistencia IA"
+                  aria-label="Crear historia de usuario"
+                >
+                  Crear historia
+                </Button>
+              )}
+            </>
           )}
         </div>
       </div>
 
       {/* Role-Specific Contextual Guidance Banner */}
-      <div className="p-4 rounded-cards bg-carbon/90 border border-graphite/70 shadow-subtle flex items-start gap-3.5">
+      <div className="p-4 rounded-cards bg-carbon/90 border border-graphite/70 shadow-subtle flex items-start gap-3.5 min-h-[96px] shrink-0">
         <div className="p-2 rounded-lg bg-signal-teal/10 text-signal-teal shrink-0 mt-0.5 border border-signal-teal/20 shadow-[0_0_10px_rgba(25,217,232,0.15)]">
           {effectiveRole === 'PRODUCT_OWNER' ? (
             <Target className="w-5 h-5" />
@@ -566,13 +586,20 @@ export function DashboardView({
       )}
 
       {/* Top 4 KPI Statistics Cards Overview (Consistent Dimensions & Aligned Metrics) */}
-      {!loading && projects.length > 0 && (
+      <h2 className="sr-only">Métricas Clave del Proyecto</h2>
+      {loading ? (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4" aria-busy="true" aria-label="Cargando métricas clave">
+          {[1, 2, 3, 4].map((i) => (
+            <SkeletonKpi key={i} />
+          ))}
+        </div>
+      ) : projects.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Card 1: Proyectos Activos */}
           <motion.div
-            initial={shouldReduceMotion ? {} : { opacity: 0, y: 10 }}
-            animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.18 }}
+            initial={shouldReduceMotion ? {} : { opacity: 0 }}
+            animate={shouldReduceMotion ? {} : { opacity: 1 }}
+            transition={{ duration: 0.16 }}
             className="p-5 rounded-2xl bg-carbon border border-graphite/80 hover:border-signal-teal/40 shadow-[0_4px_24px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_16px_rgba(25,217,232,0.1)] transition-all duration-200 flex flex-col justify-between min-h-[175px] relative overflow-hidden group"
           >
             <div className="flex items-start justify-between gap-2">
@@ -604,9 +631,9 @@ export function DashboardView({
 
           {/* Card 2: Sprints en Curso */}
           <motion.div
-            initial={shouldReduceMotion ? {} : { opacity: 0, y: 10 }}
-            animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.22 }}
+            initial={shouldReduceMotion ? {} : { opacity: 0 }}
+            animate={shouldReduceMotion ? {} : { opacity: 1 }}
+            transition={{ duration: 0.16 }}
             className="p-5 rounded-2xl bg-carbon border border-graphite/80 hover:border-pulse-green/40 shadow-[0_4px_24px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_16px_rgba(48,217,155,0.1)] transition-all duration-200 flex flex-col justify-between min-h-[175px] relative overflow-hidden group"
           >
             <div className="flex items-start justify-between gap-2">
@@ -640,9 +667,9 @@ export function DashboardView({
 
           {/* Card 3: Historias de Usuario */}
           <motion.div
-            initial={shouldReduceMotion ? {} : { opacity: 0, y: 10 }}
-            animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.26 }}
+            initial={shouldReduceMotion ? {} : { opacity: 0 }}
+            animate={shouldReduceMotion ? {} : { opacity: 1 }}
+            transition={{ duration: 0.16 }}
             className="p-5 rounded-2xl bg-carbon border border-graphite/80 hover:border-signal-teal/40 shadow-[0_4px_24px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_16px_rgba(25,217,232,0.1)] transition-all duration-200 flex flex-col justify-between min-h-[175px] relative overflow-hidden group"
           >
             <div className="flex items-start justify-between gap-2">
@@ -682,9 +709,9 @@ export function DashboardView({
 
           {/* Card 4: Entrega de Puntos */}
           <motion.div
-            initial={shouldReduceMotion ? {} : { opacity: 0, y: 10 }}
-            animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
+            initial={shouldReduceMotion ? {} : { opacity: 0 }}
+            animate={shouldReduceMotion ? {} : { opacity: 1 }}
+            transition={{ duration: 0.16 }}
             className="p-5 rounded-2xl bg-carbon border border-graphite/80 hover:border-iris-violet/40 shadow-[0_4px_24px_rgba(0,0,0,0.35)] hover:shadow-[0_8px_32px_rgba(0,0,0,0.5),0_0_16px_rgba(168,85,247,0.1)] transition-all duration-200 flex flex-col justify-between min-h-[175px] relative overflow-hidden group"
           >
             <div className="flex items-start justify-between gap-2">
@@ -717,13 +744,18 @@ export function DashboardView({
             </div>
           </motion.div>
         </div>
-      )}
+      ) : null}
 
       {/* Middle Visual Analytics Row: Chart 1 (Burndown vs Burnup) & Chart 2 (Donut Distribución) */}
-      {!loading && projects.length > 0 && (
+      {loading ? (
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-4" aria-busy="true" aria-label="Cargando gráficos analíticos">
+          <SkeletonChart className="lg:col-span-8 min-h-[365px]" />
+          <SkeletonChart className="lg:col-span-4 min-h-[365px]" />
+        </div>
+      ) : projects.length > 0 ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* Chart 1: Sprint Burndown (Trabajo Restante) / Burnup */}
-          <div className="lg:col-span-8 p-5 rounded-2xl bg-carbon border border-graphite/80 shadow-[0_4px_24px_rgba(0,0,0,0.35)] flex flex-col justify-between">
+          <div className="lg:col-span-8 p-5 rounded-2xl bg-carbon border border-graphite/80 shadow-[0_4px_24px_rgba(0,0,0,0.35)] flex flex-col justify-between min-h-[365px]">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
               <div>
                 <h3 className="text-[15px] font-semibold text-bone">Rendimiento y Burndown del Sprint</h3>
@@ -879,7 +911,7 @@ export function DashboardView({
           </div>
 
           {/* Chart 2: Donut Chart - Distribución del Trabajo (Perfect Geometry & Clean Legend) */}
-          <div className="lg:col-span-4 p-5 rounded-2xl bg-carbon border border-graphite/80 shadow-[0_4px_24px_rgba(0,0,0,0.35)] flex flex-col justify-between">
+          <div className="lg:col-span-4 p-5 rounded-2xl bg-carbon border border-graphite/80 shadow-[0_4px_24px_rgba(0,0,0,0.35)] flex flex-col justify-between min-h-[365px]">
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-[15px] font-semibold text-bone">Distribución del Trabajo</h3>
               <span className="text-[11px] text-signal-teal font-mono">Consolidado</span>
@@ -1009,47 +1041,49 @@ export function DashboardView({
             </div>
           </div>
         </div>
-      )}
+      ) : null}
 
-      {/* Loading Skeletons */}
-      {loading ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-          {[1, 2, 3].map((i) => (
-            <SkeletonCard key={i} />
-          ))}
+      {/* Projects Section (Stable Layout & Zero CLS) */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="text-[16px] font-semibold text-bone flex items-center gap-2">
+            <FolderKanban className="w-4 h-4 text-signal-teal" />
+            <span>Espacios de Trabajo Scrum</span>
+          </h2>
+          <span className="text-[12px] text-fog">
+            {loading ? 'Cargando espacios...' : `${projects.length} registrados`}
+          </span>
         </div>
-      ) : projects.length === 0 ? (
-        <EmptyState
-          icon={<FolderOpen className="w-6 h-6" />}
-          title="Todavía no hay proyectos registrados"
-          description={
-            isAdmin
-              ? 'Crea tu primer proyecto Scrum para estructurar el Product Backlog, planificar Sprints y seguir el tablero Kanban.'
-              : 'Solicita a un Administrador que te asigne una membresía en un proyecto para empezar a colaborar.'
-          }
-          action={
-            isAdmin ? (
-              <Button
-                variant="primary"
-                size="sm"
-                onClick={() => setCreateOpen(true)}
-                icon={<Plus className="w-3.5 h-3.5" />}
-              >
-                Crear primer proyecto
-              </Button>
-            ) : undefined
-          }
-        />
-      ) : (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-[16px] font-semibold text-bone flex items-center gap-2">
-              <FolderKanban className="w-4 h-4 text-signal-teal" />
-              <span>Espacios de Trabajo Scrum</span>
-            </h2>
-            <span className="text-[12px] text-fog">{projects.length} registrados</span>
-          </div>
 
+        {loading ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" aria-busy="true" aria-label="Cargando espacios de trabajo">
+            {[1, 2, 3, 4, 5, 6].map((i) => (
+              <SkeletonProjectCard key={i} />
+            ))}
+          </div>
+        ) : projects.length === 0 ? (
+          <EmptyState
+            icon={<FolderOpen className="w-6 h-6" />}
+            title="Todavía no hay proyectos registrados"
+            description={
+              isAdmin
+                ? 'Crea tu primer proyecto Scrum para estructurar el Product Backlog, planificar Sprints y seguir el tablero Kanban.'
+                : 'Solicita a un Administrador que te asigne una membresía en un proyecto para empezar a colaborar.'
+            }
+            action={
+              isAdmin ? (
+                <Button
+                  variant="primary"
+                  size="sm"
+                  onClick={() => setCreateOpen(true)}
+                  icon={<Plus className="w-3.5 h-3.5" />}
+                >
+                  Crear primer proyecto
+                </Button>
+              ) : undefined
+            }
+          />
+        ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
             {projects.map((project, index) => {
               const pct =
@@ -1060,10 +1094,10 @@ export function DashboardView({
               return (
                 <motion.div
                   key={project.id}
-                  initial={shouldReduceMotion ? {} : { opacity: 0, y: 12 }}
-                  animate={shouldReduceMotion ? {} : { opacity: 1, y: 0 }}
-                  transition={{ duration: 0.18, delay: Math.min(index * 0.05, 0.3) }}
-                  className="group rounded-2xl bg-carbon border border-graphite/80 hover:border-signal-teal/40 hover:shadow-[0_8px_30px_rgba(0,0,0,0.5),0_0_20px_rgba(25,217,232,0.08)] transition-all duration-200 p-5 flex flex-col justify-between gap-5 relative overflow-hidden"
+                  initial={shouldReduceMotion ? {} : { opacity: 0 }}
+                  animate={shouldReduceMotion ? {} : { opacity: 1 }}
+                  transition={{ duration: 0.16 }}
+                  className="group rounded-2xl bg-carbon border border-graphite/80 hover:border-signal-teal/40 hover:shadow-[0_8px_30px_rgba(0,0,0,0.5),0_0_20px_rgba(25,217,232,0.08)] transition-all duration-200 p-5 flex flex-col justify-between gap-5 relative overflow-hidden min-h-[265px]"
                 >
                   {/* Subtle top indicator bar */}
                   <div className="absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-signal-teal via-iris-violet to-pulse-green opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
@@ -1117,9 +1151,9 @@ export function DashboardView({
                       onClick={() => onOpenProject(project.id, 'backlog')}
                       className="text-left block w-full group/btn focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-signal-teal/50 rounded-inputs"
                     >
-                      <h2 className="font-display text-[17px] font-semibold text-bone group-hover/btn:text-paper group-hover/btn:translate-x-0.5 transition-all">
+                      <h3 className="font-display text-[17px] font-semibold text-bone group-hover/btn:text-paper group-hover/btn:translate-x-0.5 transition-all">
                         {project.name}
-                      </h2>
+                      </h3>
                       <p className="mt-1 text-[13px] text-mist leading-relaxed line-clamp-2">
                         {project.description || 'Sin descripción técnica registrada.'}
                       </p>
@@ -1209,8 +1243,8 @@ export function DashboardView({
               );
             })}
           </div>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* Create Project Modal */}
       <Modal
