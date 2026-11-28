@@ -188,6 +188,7 @@
 
   body {
     font-family: var(--font-inter-variable);
+    font-size-adjust: from-font;
     background-color: var(--color-void);
     color: var(--color-mist);
     overflow-x: hidden;
@@ -230,19 +231,19 @@
   background: var(--color-ash);
 }
 
-@keyframes ai-shimmer {
-  0% {
-    background-position: -200% 0;
+@keyframes gpu-pulse {
+  0%, 100% {
+    opacity: 1;
   }
-  100% {
-    background-position: 200% 0;
+  50% {
+    opacity: 0.5;
   }
 }
 
 .skeleton-wave {
-  background: linear-gradient(90deg, var(--color-carbon) 25%, var(--color-obsidian) 50%, var(--color-carbon) 75%);
-  background-size: 200% 100%;
-  animation: ai-shimmer 1.6s infinite linear;
+  background-color: var(--color-carbon);
+  animation: gpu-pulse 1.8s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  will-change: opacity;
 }
 
 /* Neon Glow & Card Utilities */
